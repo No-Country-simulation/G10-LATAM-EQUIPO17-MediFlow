@@ -1,0 +1,12 @@
+.env
+*.pem
+*.key
+.oci/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.vscode/
+.idea/
+.DS_Store
