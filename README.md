@@ -28,6 +28,26 @@ El sistema se implementará bajo una Arquitectura RESTful, dividiendo la soluci�
 
 ## Frontend
 
+#### Estructura de Carpetas 
+
+```text
+src/
+├── app/
+├── modules/
+│   └── <modulo>/
+│       ├── components/
+│       ├── pages/
+│       ├── services/
+│       └── types/
+├── shared/
+│   ├── ui/
+│   ├── hooks/
+│   ├── utils/
+│   ├── api/
+│   └── assets/
+└── main.tsx
+```
+
 ## Backend
 
 ### Estructura de Carpetas:
