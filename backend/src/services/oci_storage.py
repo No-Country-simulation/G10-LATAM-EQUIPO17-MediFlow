@@ -26,10 +26,7 @@ class MediFlowStorage:
 
     def _crear_cliente(self) -> oci.object_storage.ObjectStorageClient:
         try:
-            config = oci.config.from_file(
-                file_location=self.settings.oci_config_path,
-                profile_name=self.settings.oci_config_profile,
-            )
+            config = self.settings.obtener_oci_config()
             oci.config.validate_config(config)
             return oci.object_storage.ObjectStorageClient(config)
         except Exception as e:
