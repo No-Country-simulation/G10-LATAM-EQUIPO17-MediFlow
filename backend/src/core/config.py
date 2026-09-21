@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     llm_api_key: str = ""
 
+    # JWT
+    jwt_secret_key: str = "mediflow-dev-secret-cambiar-en-prod"
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
