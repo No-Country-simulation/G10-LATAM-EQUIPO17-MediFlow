@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -33,7 +32,7 @@ class TipoDocumento(str, Enum):
 class SolicitudTriaje(BaseModel):
     documento_id: str = Field(..., examples=["DOC-CLIN-2026-8942"])
     tipo_archivo: str = Field(..., examples=["PDF", "imagen", "texto"])
-    documento_texto: Optional[str] = None
+    documento_texto: str | None = None
     canal_origen: str = Field(default="manual", examples=["Guardia_Emergencias", "Consulta_Externa"])
 
 
@@ -41,22 +40,22 @@ class SolicitudTriaje(BaseModel):
 
 class DatosPaciente(BaseModel):
     nombre: str = ""
-    edad: Optional[int] = None
+    edad: int | None = None
 
 
 class DatosMedico(BaseModel):
     nombre: str = ""
-    matricula: Optional[str] = None
+    matricula: str | None = None
 
 
 class DatosExtraidos(BaseModel):
     paciente: DatosPaciente = Field(default_factory=DatosPaciente)
     medico_solicitante: DatosMedico = Field(default_factory=DatosMedico)
-    estudio_realizado: Optional[str] = None
-    diagnostico_principal: Optional[str] = None
-    cie10_sugerido: Optional[str] = None
-    medicamentos: Optional[list[str]] = None
-    dosis: Optional[list[str]] = None
+    estudio_realizado: str | None = None
+    diagnostico_principal: str | None = None
+    cie10_sugerido: str | None = None
+    medicamentos: list[str] | None = None
+    dosis: list[str] | None = None
 
 
 class ClasificacionDocumento(BaseModel):
@@ -80,7 +79,7 @@ class DecisionEnrutamiento(BaseModel):
     )
     requiere_auditoria_humana: bool = False
     justificacion_enrutamiento: str = ""
-    notificacion_generada: Optional[NotificacionGenerada] = None
+    notificacion_generada: NotificacionGenerada | None = None
 
 
 class AlmacenamientoOCI(BaseModel):
@@ -106,12 +105,12 @@ class MetadataDocumento(BaseModel):
     nivel_prioridad: NivelPrioridad = NivelPrioridad.RUTINA
     score_confianza: float = Field(default=0.0, ge=0.0, le=1.0)
     canal_origen: str = "manual"
-    paciente_nombre: Optional[str] = None
-    medico_solicitante: Optional[str] = None
-    diagnostico_principal: Optional[str] = None
-    cie10: Optional[str] = None
+    paciente_nombre: str | None = None
+    medico_solicitante: str | None = None
+    diagnostico_principal: str | None = None
+    cie10: str | None = None
     fecha_recepcion: datetime = Field(default_factory=datetime.utcnow)
-    destino_enrutamiento: Optional[str] = None
+    destino_enrutamiento: str | None = None
 
     def to_oci_metadata(self) -> dict[str, str]:
         return {
