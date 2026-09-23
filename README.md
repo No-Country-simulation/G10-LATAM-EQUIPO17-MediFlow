@@ -28,7 +28,15 @@ El sistema se implementará bajo una Arquitectura RESTful, dividiendo la soluci�
 
 ## Frontend
 
-#### Estructura de Carpetas 
+### Tecnologías
+
+- **React 19:** biblioteca principal para construir la interfaz de usuario.
+- **Vite 8:** herramienta de desarrollo y compilación del proyecto frontend.
+- **JavaScript y JSX:** lenguaje y sintaxis utilizados para desarrollar los componentes.
+- **React DOM:** integración de React con el DOM del navegador.
+- **Oxlint:** herramienta de análisis estático y revisión de calidad del código.
+
+#### Estructura de Carpetas
 
 ```text
 src/
