@@ -33,8 +33,15 @@ class Settings(BaseSettings):
     umbral_confianza_minimo: float = Field(default=0.75, ge=0.0, le=1.0)
 
     # LLM
-    llm_provider: str = "gemini"
+      #GMINI
+    llm_provider: str = "gemini-2.5-flash"
     llm_api_key: str = ""
+     #GROQ
+    api_key_groq: str = ""
+    model_groq: str = "llama-3.2-11b-vision-preview" 
+
+    # Extensiones de los archivos
+    extensiones_archivos: set[str] = {"pdf", "png", "jpg", "jpeg"}
 
     # JWT
     jwt_secret_key: str = "mediflow-dev-secret-cambiar-en-prod"
