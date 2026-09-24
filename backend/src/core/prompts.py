@@ -31,7 +31,7 @@ system_prompt_vision = ChatPromptTemplate.from_messages([
 ])
 
 
-system_prompt_extrator = ChatPromptTemplate.from_template("""
+system_prompt_triaje = ChatPromptTemplate.from_template("""
     Eres un asistente médico experto en triaje clínico.
     Analiza el contenido del siguiente documento y extrae la información estructurada requerida.
 

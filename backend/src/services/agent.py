@@ -1,10 +1,10 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
-from fastapi import UploadFile, FastAPI
+from fastapi import File, Form, UploadFile, HTTPException, status, FastAPI
 import pymupdf as fitz
 import base64
-
+from src.schemas.documento import SolicitudTriaje
 from src.core.config import get_settings
 
 from src.schemas.agent_schemas import (
@@ -14,7 +14,7 @@ from src.schemas.agent_schemas import (
 )
 
 from src.core.prompts import(
-    system_prompt_extrator,
+    system_prompt_triaje,
     system_prompt_vision,
 )
 
@@ -42,7 +42,7 @@ llm_groq = ChatGroq(
 
 agente_vision = system_prompt_vision | llm_gemini.with_structured_output(ContenidoImagen)
 
-agente_extrator = system_prompt_extrator | llm_gemini.with_structured_output(SalidaAgenteExtractor)
+agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
 
 agente_enrutador = None
 
@@ -53,14 +53,15 @@ def leer_imagene(imagen: str) -> str:
     try:
        resultado = agente_vision.invoke({"imagen": imagen})
     except Exception as e:
-        if "429" in str(e):
-            return "Lo siento, he alcanzado el límite de consultas por hoy. Por favor, inténtalo nuevamente cuando las cuotas se recuperen."
 
-        print(f"Error generando respuesta: {e}")
-        return "Hubo un problema con el servicio de IA. Inténtalo de nuevo en unos momentos."
+        print(f"Error durante el procesamiento del agente: {e}")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
+        )
 
     return resultado.contenido
-
 
 
 async def extraer_texto_multiformato(file: UploadFile) -> str:
@@ -112,15 +113,59 @@ async def extraer_texto_multiformato(file: UploadFile) -> str:
     finally:
         if doc:
             doc.close()
+
+def extraer_datos_triaje(statu: StatusTriaje) -> dict:
+
+    solicitud_agent = statu["solicitud"]
+
+    try:
+        informacion_extraida = agente_triaje .invoke({
+            "canal_origen": solicitud_agent.canal_origen,
+            "tipo_archivo": solicitud_agent.tipo_archivo,
+            "documento_texto": solicitud_agent.documento_texto 
+            })
+
+    except Exception as e:
+        print(f"Error durante el procesamiento del agente: {e}")
     
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
+        )
+
+    return{
+        "clasificacion": informacion_extraida.clasificacion,
+        "datos_extraidos": informacion_extraida.datos_extraidos}
+
 
 app = FastAPI()
 
 @app.post("/archivo")
-async def archivo(file: UploadFile):
+async def archivo(solicitud: SolicitudTriaje):
 
-    texto = await extraer_texto_multiformato(file)
+    datos= extraer_datos_triaje({"solicitud": solicitud})
 
-    return {"texto extraido": texto}
+    return {"datos extraido": datos}
 
+@app.post("/archivo2")
+async def procesar_triaje_archivo(
+    archivo: UploadFile = File(...),
+    documento_id: str = Form(...),
+    canal_origen: str = Form(default="manual"),
+):
 
+    documento_texto = await extraer_texto_multiformato(archivo)
+
+    solicitud = SolicitudTriaje(
+        documento_id=documento_id,
+        canal_origen=canal_origen,
+        tipo_archivo=archivo.filename.split(".")[-1].lower() if archivo.filename else "archivo",
+        documento_texto=documento_texto
+    )
+
+    datos = extraer_datos_triaje({"solicitud":solicitud})
+
+    return datos
+
+    
+   
