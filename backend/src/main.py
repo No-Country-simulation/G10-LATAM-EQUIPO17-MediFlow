@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.routers import triaje_router, storage_router
+from src.routers import triaje_router, storage_router, auth_router
 
 app = FastAPI(
     title="MediFlow API",
@@ -17,6 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(triaje_router)
 app.include_router(storage_router)
 
