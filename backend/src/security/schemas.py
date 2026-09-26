@@ -1,4 +1,5 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, EmailStr
 from enum import Enum
 
 
@@ -10,14 +11,22 @@ class Rol(str, Enum):
 
 class RegistroRequest(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100)
-    email: str = Field(..., min_length=5, max_length=100)
+    email: EmailStr = Field(..., max_length=100)
     password: str = Field(..., min_length=8, max_length=128)
     rol: Rol = Rol.PACIENTE
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 
 class TokenResponse(BaseModel):
@@ -38,3 +47,5 @@ class UsuarioResponse(BaseModel):
     email: str
     rol: Rol
     activo: bool = True
+    created_at: datetime | None = None
+    last_login: datetime | None = None
