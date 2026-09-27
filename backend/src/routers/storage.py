@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from src.core.config import Settings, get_settings
 from src.core.exceptions import BucketNoEncontradoError, ConfiguracionOCIError, DocumentoNoEncontradoError
+from src.core.rate_limit import limiter
 from src.schemas.documento import EstadoDocumento
 from src.security import requiere_rol, Rol
 from src.security.schemas import TokenPayload
@@ -15,7 +16,9 @@ def get_storage(settings: Settings = Depends(get_settings)) -> MediFlowStorage:
 
 
 @router.get("/health")
+@limiter.limit("10/minute")
 async def health_check(
+    request: Request,
     usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
     storage: MediFlowStorage = Depends(get_storage),
 ):
@@ -29,7 +32,9 @@ async def health_check(
 
 
 @router.get("/documentos")
+@limiter.limit("30/minute")
 async def listar_documentos(
+    request: Request,
     estado: EstadoDocumento = Query(...),
     prefijo: str | None = Query(default=None),
     limite: int = Query(default=50, ge=1, le=500),
@@ -43,7 +48,9 @@ async def listar_documentos(
 
 
 @router.get("/documentos/{bucket}/{ruta_objeto:path}")
+@limiter.limit("30/minute")
 async def obtener_documento(
+    request: Request,
     bucket: str, ruta_objeto: str,
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
     storage: MediFlowStorage = Depends(get_storage),
