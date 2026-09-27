@@ -15,10 +15,12 @@ from src.security import (
     hashear_password,
     verificar_password,
     obtener_usuario_actual,
+    requiere_rol,
     LoginRequest,
     RegistroRequest,
     RefreshRequest,
     LogoutRequest,
+    CambioRolRequest,
     TokenResponse,
     TokenPayload,
     UsuarioResponse,
@@ -165,8 +167,61 @@ async def perfil_actual(
         id=datos.id,
         nombre=datos.nombre,
         email=datos.email,
-        rol=Rol.PACIENTE,
+        rol=datos.rol,
         activo=datos.activo,
         created_at=datos.created_at,
         last_login=datos.last_login,
+    )
+
+
+@router.get("/usuarios", response_model=list[UsuarioResponse])
+@limiter.limit("10/minute")
+async def listar_usuarios(
+    request: Request,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Usuario).order_by(Usuario.created_at.desc()))
+    usuarios = result.scalars().all()
+
+    return [
+        UsuarioResponse(
+            id=u.id, nombre=u.nombre, email=u.email,
+            rol=u.rol, activo=u.activo,
+            created_at=u.created_at, last_login=u.last_login,
+        )
+        for u in usuarios
+    ]
+
+
+@router.patch("/usuarios/{usuario_id}/rol", response_model=UsuarioResponse)
+@limiter.limit("5/minute")
+async def cambiar_rol(
+    request: Request,
+    usuario_id: str,
+    datos: CambioRolRequest,
+    admin: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    if usuario_id == admin.sub:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No puedes modificar tu propio rol",
+        )
+
+    usuario = await db.get(Usuario, usuario_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    usuario.rol = datos.rol
+    await db.commit()
+    await db.refresh(usuario)
+
+    return UsuarioResponse(
+        id=usuario.id, nombre=usuario.nombre, email=usuario.email,
+        rol=usuario.rol, activo=usuario.activo,
+        created_at=usuario.created_at, last_login=usuario.last_login,
     )
