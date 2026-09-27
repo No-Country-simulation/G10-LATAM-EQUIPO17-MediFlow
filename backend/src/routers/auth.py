@@ -42,7 +42,7 @@ async def registrar_usuario(request: Request, datos: RegistroRequest, db: AsyncS
         nombre=datos.nombre,
         email=datos.email,
         password_hash=hashear_password(datos.password),
-        rol=datos.rol,
+        rol=Rol.PACIENTE,
     )
     db.add(usuario)
     await db.commit()
@@ -165,7 +165,7 @@ async def perfil_actual(
         id=datos.id,
         nombre=datos.nombre,
         email=datos.email,
-        rol=datos.rol,
+        rol=Rol.PACIENTE,
         activo=datos.activo,
         created_at=datos.created_at,
         last_login=datos.last_login,
