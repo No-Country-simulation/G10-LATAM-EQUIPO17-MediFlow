@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from src.core.config import Settings, get_settings
 from src.core.exceptions import BucketNoEncontradoError, ConfiguracionOCIError, DocumentoNoEncontradoError
 from src.schemas.documento import EstadoDocumento
+from src.security import requiere_rol, Rol
+from src.security.schemas import TokenPayload
 from src.services.oci_storage import MediFlowStorage
 
 router = APIRouter(prefix="/storage", tags=["OCI Object Storage"])
@@ -13,7 +15,10 @@ def get_storage(settings: Settings = Depends(get_settings)) -> MediFlowStorage:
 
 
 @router.get("/health")
-async def health_check(storage: MediFlowStorage = Depends(get_storage)):
+async def health_check(
+    usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    storage: MediFlowStorage = Depends(get_storage),
+):
     try:
         resultado = storage.verificar_conexion()
         if not resultado["oci_conectado"]:
@@ -28,6 +33,7 @@ async def listar_documentos(
     estado: EstadoDocumento = Query(...),
     prefijo: str | None = Query(default=None),
     limite: int = Query(default=50, ge=1, le=500),
+    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
     storage: MediFlowStorage = Depends(get_storage),
 ):
     try:
@@ -39,6 +45,7 @@ async def listar_documentos(
 @router.get("/documentos/{bucket}/{ruta_objeto:path}")
 async def obtener_documento(
     bucket: str, ruta_objeto: str,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
     storage: MediFlowStorage = Depends(get_storage),
 ):
     try:
