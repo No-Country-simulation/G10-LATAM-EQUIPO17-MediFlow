@@ -1,11 +1,10 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from fastapi import File, Form, UploadFile, HTTPException, status, FastAPI
 import pymupdf as fitz
 import base64
-from src.schemas.documento import SolicitudTriaje
 from src.core.config import get_settings
+from src.services.oci_storage import MediFlowStorage
 
 from src.schemas.agent_schemas import (
     SalidaAgenteExtractor,
@@ -13,12 +12,23 @@ from src.schemas.agent_schemas import (
     ContenidoImagen,
 )
 
+from src.schemas.documento import (
+    MetadataDocumento, 
+    SolicitudTriaje,
+    DecisionEnrutamiento,
+    AlmacenamientoOCI,
+    RespuestaTriaje,
+)
+
 from src.core.prompts import(
     system_prompt_triaje,
     system_prompt_vision,
+    syetem_prompt_enrutador,
 )
 
 settings = get_settings()
+
+umbral_confianza_minimo = settings.umbral_confianza_minimo
 
 
 #--------------------------- Logica ------------------------------------
@@ -44,9 +54,13 @@ agente_vision = system_prompt_vision | llm_gemini.with_structured_output(Conteni
 
 agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
 
-agente_enrutador = None
+agente_enrutador = syetem_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
+
+# --------
 
 extensiones = settings.extensiones_archivos
+
+# Funciones / Nodos
 
 def leer_imagene(imagen: str) -> str:
 
@@ -114,9 +128,9 @@ async def extraer_texto_multiformato(file: UploadFile) -> str:
         if doc:
             doc.close()
 
-def extraer_datos_triaje(statu: StatusTriaje) -> dict:
+def extraer_datos_triaje(status: StatusTriaje) -> dict:
 
-    solicitud_agent = statu["solicitud"]
+    solicitud_agent = status["solicitud"]
 
     try:
         informacion_extraida = agente_triaje .invoke({
@@ -137,35 +151,27 @@ def extraer_datos_triaje(statu: StatusTriaje) -> dict:
         "clasificacion": informacion_extraida.clasificacion,
         "datos_extraidos": informacion_extraida.datos_extraidos}
 
+def enrutar_triaje(status: StatusTriaje)-> dict:
 
-app = FastAPI()
+    try:
 
-@app.post("/archivo")
-async def archivo(solicitud: SolicitudTriaje):
+        decision_enrutamiento = agente_enrutador.invoke({
+            "umbral_confianza": umbral_confianza_minimo,
+            "clasificacion": status["clasificacion"],
+            "datos_extraidos": status["datos_extraidos"]
+        })
 
-    datos= extraer_datos_triaje({"solicitud": solicitud})
+    except Exception as e:
+        print(f"Error durante el procesamiento del agente: {e}")
+    
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
+        )
 
-    return {"datos extraido": datos}
 
-@app.post("/archivo2")
-async def procesar_triaje_archivo(
-    archivo: UploadFile = File(...),
-    documento_id: str = Form(...),
-    canal_origen: str = Form(default="manual"),
-):
+    return {"decision_enrutamiento": decision_enrutamiento}
 
-    documento_texto = await extraer_texto_multiformato(archivo)
-
-    solicitud = SolicitudTriaje(
-        documento_id=documento_id,
-        canal_origen=canal_origen,
-        tipo_archivo=archivo.filename.split(".")[-1].lower() if archivo.filename else "archivo",
-        documento_texto=documento_texto
-    )
-
-    datos = extraer_datos_triaje({"solicitud":solicitud})
-
-    return datos
 
     
    
