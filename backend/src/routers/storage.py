@@ -53,8 +53,13 @@ async def obtener_documento(
     request: Request,
     bucket: str, ruta_objeto: str,
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
+    settings: Settings = Depends(get_settings),
     storage: MediFlowStorage = Depends(get_storage),
 ):
+    buckets_validos = {settings.bucket_recibidos, settings.bucket_procesados, settings.bucket_auditoria}
+    if bucket not in buckets_validos:
+        raise HTTPException(status_code=400, detail="Bucket no permitido")
+
     if ".." in ruta_objeto or ruta_objeto.startswith("/"):
         raise HTTPException(status_code=400, detail="Ruta no permitida")
 
