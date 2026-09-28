@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     oci_compartment_id: str = Field(...)
     oci_region: str = "sa-saopaulo-1"
 
-    # OCI (modo producción: credenciales por variables de entorno)
+    # OCI (modo produccion: credenciales por variables de entorno)
     oci_user: str = ""
     oci_fingerprint: str = ""
     oci_tenancy: str = ""
@@ -29,22 +29,26 @@ class Settings(BaseSettings):
     bucket_procesados: str = "mediflow-procesados"
     bucket_auditoria: str = "mediflow-auditoria"
 
-    # Umbral para derivar a auditoría humana
+    # Umbral para derivar a auditoria humana
     umbral_confianza_minimo: float = Field(default=0.75, ge=0.0, le=1.0)
 
+    # DB
+    database_url: str = "sqlite+aiosqlite:///./mediflow.db"
+
     # LLM
-      #GMINI
-    llm_provider: str = "gemini-2.5-flash"
+    llm_provider: str = "gemini-3.8-flash"
     llm_api_key: str = ""
-     #GROQ
     api_key_groq: str = ""
-    model_groq: str = "llama-3.2-11b-vision-preview" 
+    model_groq: str = "llama-3.2-11b-vision-preview"
 
     # Extensiones de los archivos
     extensiones_archivos: set[str] = {"pdf", "png", "jpg", "jpeg"}
 
     # JWT
     jwt_secret_key: str = "mediflow-dev-secret-cambiar-en-prod"
+
+    # CORS
+    allowed_origins: str = "*"
 
     model_config = {
         "env_file": ".env",
@@ -86,7 +90,7 @@ class Settings(BaseSettings):
         }
         bucket = mapa.get(estado)
         if not bucket:
-            raise ValueError(f"Estado '{estado}' no válido. Opciones: {list(mapa.keys())}")
+            raise ValueError(f"Estado '{estado}' no valido. Opciones: {list(mapa.keys())}")
         return bucket
 
 
