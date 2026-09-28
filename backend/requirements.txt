@@ -1,10 +1,16 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
+gunicorn>=22.0.0
 pydantic>=2.9.0
 pydantic-settings>=2.5.0
 python-multipart>=0.0.9
 PyJWT>=2.8.0
 pwdlib[argon2]
+slowapi>=0.1.9
+sqlalchemy[asyncio]>=2.0.0
+aiosqlite>=0.20.0
+asyncpg>=0.29.0
+email-validator>=2.1.0
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
@@ -15,8 +21,3 @@ graphviz>=0.20.0
 oci>=2.133.0
 pymupdf>=1.24.0
 pillow>=10.4.0
-
-# python -m venv .venv
-# source .venv/bin/activate   (Linux/Mac)
-# .venv\Scripts\Activate      (Windows)
-# pip install -r requirements.txt
