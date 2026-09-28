@@ -1,5 +1,6 @@
 from typing import TypedDict, Optional
 from pydantic import BaseModel, Field
+from fastapi import UploadFile
 from src.schemas.documento import (
     SolicitudTriaje,
     ClasificacionDocumento,
@@ -11,19 +12,20 @@ from src.schemas.documento import (
 
 #------     INICIO DE LOS SCHEMAS ------------
 
-class StatusTriaje(TypedDict):
+class StatusTriaje(TypedDict, total=False):
     solicitud: SolicitudTriaje
-    clasificacion: Optional[ClasificacionDocumento]
-    datos_extraidos: Optional[DatosExtraidos]
-    decision_enrutamiento: Optional[DecisionEnrutamiento]
-    almacenamiento_oci: Optional[AlmacenamientoOCI]
+    archivo_bytes: bytes | None
+    nombre_archivo: str | None
+    clasificacion: ClasificacionDocumento | None 
+    datos_extraidos: DatosExtraidos | None 
+    decision_enrutamiento: DecisionEnrutamiento | None 
+    almacenamiento_oci: AlmacenamientoOCI | None 
 
 class SalidaAgenteExtractor(BaseModel):
     clasificacion: ClasificacionDocumento = Field(
         ..., description="Clasificación, tipo de documento y score de confianza"
     )
     datos_extraidos: DatosExtraidos = Field(
-        ..., description="Datos clínicos y administrativos extraídos del texto"
     )
 
 # SCHEMA PARA EXTRAER EL TEXTO DE IMAGENES

@@ -127,6 +127,28 @@ class MetadataDocumento(BaseModel):
             "destino_enrutamiento": self.destino_enrutamiento or "",
         }
 
+    @classmethod
+    def from_triaje_to_metadata(
+        cls,
+        solicitud: SolicitudTriaje,
+        clasificacion: ClasificacionDocumento,
+        datos: DatosExtraidos,
+        decision: DecisionEnrutamiento,
+    ) -> "MetadataDocumento":
+        """Crea MetadataDocumento extrayendo la información directamente de los modelos del triaje."""
+        return cls(
+            documento_id=solicitud.documento_id,
+            canal_origen=solicitud.canal_origen,
+            tipo_documento=clasificacion.tipo_documento,
+            nivel_prioridad=clasificacion.nivel_prioridad,
+            score_confianza=clasificacion.score_confianza_clasificacion,
+            paciente_nombre=datos.paciente.nombre,
+            medico_solicitante=datos.medico_solicitante.nombre,
+            diagnostico_principal=datos.diagnostico_principal,
+            cie10=datos.cie10_sugerido,
+            destino_enrutamiento=decision.destino_principal,
+        )
+
 
 # --- Respuestas storage ---
 
