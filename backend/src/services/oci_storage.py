@@ -30,7 +30,7 @@ class MediFlowStorage:
             oci.config.validate_config(config)
             return oci.object_storage.ObjectStorageClient(config)
         except Exception as e:
-            raise ConfiguracionOCIError(f"Error conectando a OCI: {e}")
+            raise ConfiguracionOCIError("Error de conexion con el servicio de almacenamiento")
 
     # --- Subida ---
 

@@ -1,6 +1,6 @@
+import uuid
 import jwt
 from datetime import datetime, timedelta, timezone
-
 from src.core.config import get_settings
 
 ALGORITHM = "HS256"
@@ -22,7 +22,7 @@ def crear_access_token(data: dict) -> str:
 def crear_refresh_token(data: dict) -> str:
     payload = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    payload.update({"exp": expire, "type": "refresh"})
+    payload.update({"exp": expire, "type": "refresh", "jti": str(uuid.uuid4())})
     return jwt.encode(payload, _get_secret(), algorithm=ALGORITHM)
 
 

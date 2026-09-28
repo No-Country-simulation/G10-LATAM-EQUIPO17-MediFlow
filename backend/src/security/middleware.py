@@ -37,7 +37,7 @@ def requiere_rol(*roles_permitidos: Rol):
         if usuario.rol not in roles_permitidos:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Se requiere rol: {', '.join(r.value for r in roles_permitidos)}",
+                detail="Acceso denegado",
             )
         return usuario
     return verificar
