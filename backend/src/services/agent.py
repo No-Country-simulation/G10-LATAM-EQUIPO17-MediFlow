@@ -6,17 +6,35 @@ import base64
 
 from src.schemas.documento import SolicitudTriaje
 from src.core.config import get_settings
+from src.services.oci_storage import MediFlowStorage
+
 from src.schemas.agent_schemas import (
     SalidaAgenteExtractor,
     StatusTriaje,
     ContenidoImagen,
 )
 from src.core.prompts import (
+    MetadataDocumento, 
+    SolicitudTriaje,
+    DecisionEnrutamiento,
+    AlmacenamientoOCI,
+    RespuestaTriaje,
+)
+
+from src.core.prompts import(
     system_prompt_triaje,
     system_prompt_vision,
+    syetem_prompt_enrutador,
 )
 
 settings = get_settings()
+
+umbral_confianza_minimo = settings.umbral_confianza_minimo
+
+
+#--------------------------- Logica ------------------------------------
+
+# LLM
 
 llm_gemini = ChatGoogleGenerativeAI(
     model=settings.llm_provider,
@@ -31,11 +49,17 @@ llm_groq = ChatGroq(
 )
 
 agente_vision = system_prompt_vision | llm_gemini.with_structured_output(ContenidoImagen)
-agente_triaje = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
-agente_enrutador = None
+
+agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
+
+agente_enrutador = syetem_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
+
+# --------
 
 extensiones = settings.extensiones_archivos
 
+
+# Funciones / Nodos
 
 def leer_imagene(imagen: str) -> str:
     try:
@@ -88,8 +112,9 @@ async def extraer_texto_multiformato(file: UploadFile) -> str:
             doc.close()
 
 
-def extraer_datos_triaje(statu: StatusTriaje) -> dict:
-    solicitud_agent = statu["solicitud"]
+def extraer_datos_triaje(status: StatusTriaje) -> dict:
+
+    solicitud_agent = status["solicitud"]
 
     try:
         informacion_extraida = agente_triaje.invoke({
@@ -107,3 +132,29 @@ def extraer_datos_triaje(statu: StatusTriaje) -> dict:
         "clasificacion": informacion_extraida.clasificacion,
         "datos_extraidos": informacion_extraida.datos_extraidos,
     }
+
+
+def enrutar_triaje(status: StatusTriaje)-> dict:
+
+    try:
+
+        decision_enrutamiento = agente_enrutador.invoke({
+            "umbral_confianza": umbral_confianza_minimo,
+            "clasificacion": status["clasificacion"],
+            "datos_extraidos": status["datos_extraidos"]
+        })
+
+    except Exception as e:
+        print(f"Error durante el procesamiento del agente: {e}")
+    
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
+        )
+
+
+    return {"decision_enrutamiento": decision_enrutamiento}
+
+
+    
+   

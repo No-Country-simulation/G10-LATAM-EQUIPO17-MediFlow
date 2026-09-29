@@ -1,0 +1,38 @@
+:root {
+  --color-mf-sky: #71BBD1;
+  --color-mf-sky-mid: #81B9C9;
+
+  --color-mf-bg: #F7FBFC;
+  --color-mf-bg-2: #EFF8FA;
+  --color-mf-bg-3: #E6F4F7;
+  --color-mf-bg-4: #D8EDF2;
+
+  --color-mf-dark: #173B4D;
+  --color-mf-dark-2: #2C4653;
+  --color-mf-dark-3: #45606C;
+
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Manrope', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-mf-bg);
+  color: var(--color-mf-dark);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
