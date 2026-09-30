@@ -42,7 +42,7 @@ system_prompt_triaje = ChatPromptTemplate.from_template("""
     {documento_texto}
     """)
 
-syetem_prompt_enrutador = ChatPromptTemplate.from_template("""
+system_prompt_enrutador = ChatPromptTemplate.from_template("""
 Eres el agente inteligente de enrutamiento y triaje clínico para MediFlow. 
 Tu función es analizar la clasificación del documento y los datos clínicos extraídos para determinar la cola de trabajo de destino.
 
