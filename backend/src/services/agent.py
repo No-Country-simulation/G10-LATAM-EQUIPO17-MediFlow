@@ -1,10 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
-from fastapi import UploadFile, HTTPException, status
+from fastapi import HTTPException, status
 import pymupdf as fitz
 import base64
-
-from src.schemas.documento import SolicitudTriaje
 from src.core.config import get_settings
 from src.services.oci_storage import MediFlowStorage
 
@@ -13,9 +10,8 @@ from src.schemas.agent_schemas import (
     StatusTriaje,
     ContenidoImagen,
 )
-from src.core.prompts import (
+from src.schemas.documento import (
     MetadataDocumento, 
-    SolicitudTriaje,
     DecisionEnrutamiento,
     AlmacenamientoOCI,
     RespuestaTriaje,
@@ -24,27 +20,23 @@ from src.core.prompts import (
 from src.core.prompts import(
     system_prompt_triaje,
     system_prompt_vision,
-    syetem_prompt_enrutador,
+    system_prompt_enrutador,
 )
 
 settings = get_settings()
 
 umbral_confianza_minimo = settings.umbral_confianza_minimo
 
+medi_flow_storage = MediFlowStorage(settings=settings)
+
 
 #--------------------------- Logica ------------------------------------
 
 # LLM
 
-llm_gemini = ChatGoogleGenerativeAI(
+llm_gemini= ChatGoogleGenerativeAI(
     model=settings.llm_provider,
     google_api_key=settings.llm_api_key,
-    temperature=0.0,
-)
-
-llm_groq = ChatGroq(
-    model_name=settings.model_groq,
-    groq_api_key=settings.api_key_groq,
     temperature=0.0,
 )
 
@@ -52,7 +44,7 @@ agente_vision = system_prompt_vision | llm_gemini.with_structured_output(Conteni
 
 agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
 
-agente_enrutador = syetem_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
+agente_enrutador = system_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
 
 # --------
 
@@ -72,20 +64,23 @@ def leer_imagene(imagen: str) -> str:
     return resultado.contenido
 
 
-async def extraer_texto_multiformato(file: UploadFile) -> str:
-    if not file.filename or "." not in file.filename:
+def extraer_texto_multiformato(state: StatusTriaje) -> str:
+
+    nombre_archivo = state["nombre_archivo"]
+    archivo_bytes = state["archivo_bytes"]
+
+    if not nombre_archivo  or "." not in nombre_archivo :
         return "Archivo no valido"
 
-    file_ext = file.filename.split(".")[-1].lower()
+    file_ext = nombre_archivo .split(".")[-1].lower()
     if file_ext not in extensiones:
         return "Archivo no valido"
 
-    file_bytes = await file.read()
     doc = None
     texto_total = []
 
     try:
-        doc = fitz.open(stream=file_bytes, filetype=file_ext)
+        doc = fitz.open(stream=archivo_bytes, filetype=file_ext)
 
         for page_num in range(len(doc)):
             page = doc[page_num]
@@ -105,22 +100,25 @@ async def extraer_texto_multiformato(file: UploadFile) -> str:
 
     except HTTPException:
         raise
-    except Exception:
-        return "Error al procesar el archivo"
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error inesperado al procesar el archivo: {str(e)}"
+        )
     finally:
         if doc:
             doc.close()
 
 
-def extraer_datos_triaje(status: StatusTriaje) -> dict:
+def extraer_datos_triaje(state: StatusTriaje) -> dict:
 
-    solicitud_agent = status["solicitud"]
+    solicitud = state["solicitud"]
 
     try:
         informacion_extraida = agente_triaje.invoke({
-            "canal_origen": solicitud_agent.canal_origen,
-            "tipo_archivo": solicitud_agent.tipo_archivo,
-            "documento_texto": solicitud_agent.documento_texto,
+            "canal_origen": solicitud.canal_origen,
+            "tipo_archivo": solicitud.tipo_archivo,
+            "documento_texto": solicitud.documento_texto,
         })
     except Exception:
         raise HTTPException(
@@ -134,15 +132,65 @@ def extraer_datos_triaje(status: StatusTriaje) -> dict:
     }
 
 
-def enrutar_triaje(status: StatusTriaje)-> dict:
+def enrutar_triaje(state: StatusTriaje)-> dict:
+
+    solicitud = state["solicitud"]
+    clasificacion = state["clasificacion"]
+    datos_extraidos = state["datos_extraidos"]
+    archivo_bytes = state["archivo_bytes"]
+    nombre_archivo = state["nombre_archivo"]
+    es_texto = state["es_texto"]
 
     try:
 
         decision_enrutamiento = agente_enrutador.invoke({
             "umbral_confianza": umbral_confianza_minimo,
-            "clasificacion": status["clasificacion"],
-            "datos_extraidos": status["datos_extraidos"]
+            "clasificacion": clasificacion,
+            "datos_extraidos": datos_extraidos
         })
+
+
+        metadata = MetadataDocumento.from_triaje_to_metadata(
+            solicitud=solicitud,
+            clasificacion=clasificacion,
+            datos=datos_extraidos,
+            decision=decision_enrutamiento
+        )
+
+        almacenamiento_oci = None
+
+        if not es_texto:
+
+            resultado_subida = medi_flow_storage.subir_documento(
+                contenido=archivo_bytes, 
+                metadata=metadata,
+                nombre_archivo=nombre_archivo
+            )
+
+            almacenamiento_oci = AlmacenamientoOCI(
+                    bucket=resultado_subida.bucket,
+                    ruta_objeto=resultado_subida.ruta_objeto
+                )
+
+        respuesta_triaje = RespuestaTriaje(
+            documento_id=solicitud.documento_id,
+            clasificacion=clasificacion,
+            datos_extraidos=datos_extraidos,
+            decision_enrutamiento=decision_enrutamiento,
+            almacenamiento_oci=almacenamiento_oci
+        )
+
+        resultados_triaje = medi_flow_storage.subir_resultado_triaje(
+            documento_id=respuesta_triaje.documento_id,
+            resultado_json=respuesta_triaje.model_dump(mode="json"),
+            metadata=metadata
+        )
+
+        almacenamiento_oci = AlmacenamientoOCI(
+            bucket=resultados_triaje.bucket,
+            ruta_objeto=resultados_triaje.ruta_objeto
+        )
+
 
     except Exception as e:
         print(f"Error durante el procesamiento del agente: {e}")
@@ -152,9 +200,11 @@ def enrutar_triaje(status: StatusTriaje)-> dict:
             detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
         )
 
+    return {""
+    "decision_enrutamiento": decision_enrutamiento,
+    "almacenamiento_oci": almacenamiento_oci
+    }
 
-    return {"decision_enrutamiento": decision_enrutamiento}
 
 
-    
-   
+
