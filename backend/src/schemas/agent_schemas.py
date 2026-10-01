@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional
+from typing import TypedDict
 from pydantic import BaseModel, Field
 from src.schemas.documento import (
     SolicitudTriaje,

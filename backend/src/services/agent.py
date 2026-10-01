@@ -1,3 +1,5 @@
+from asyncio.log import logger
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from fastapi import HTTPException, status
 import pymupdf as fitz
@@ -53,10 +55,14 @@ extensiones = settings.extensiones_archivos
 
 # Funciones / Nodos
 
-def leer_imagene(imagen: str) -> str:
+def get_es_texto(state:StatusTriaje) -> bool:
+    return state["es_texto"]
+
+def leer_imagen(imagen: str) -> str:
     try:
         resultado = agente_vision.invoke({"imagen": imagen})
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error al procesar la imagen del documento para {solicitud.documento_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al procesar la imagen del documento",
@@ -68,14 +74,23 @@ def extraer_texto_multiformato(state: StatusTriaje) -> str:
 
     nombre_archivo = state["nombre_archivo"]
     archivo_bytes = state["archivo_bytes"]
+    solicitud = state["solicitud"]
 
-    if not nombre_archivo  or "." not in nombre_archivo :
-        return "Archivo no valido"
+    if not nombre_archivo or "." not in nombre_archivo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El nombre del archivo no es válido o carece de extensión."
+        )
 
-    file_ext = nombre_archivo .split(".")[-1].lower()
+    file_ext = nombre_archivo.split(".")[-1].lower()
     if file_ext not in extensiones:
-        return "Archivo no valido"
+        logger.error(f"Extensión de archivo no permitida: .{file_ext}. Formatos soportados: {', '.join(extensiones)}")  
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Extensión .{file_ext} no permitida. Formatos soportados: {', '.join(extensiones)}"
+        )
 
+    
     doc = None
     texto_total = []
 
@@ -93,14 +108,20 @@ def extraer_texto_multiformato(state: StatusTriaje) -> str:
                 img_bytes = pix.tobytes("png")
                 image = base64.b64encode(img_bytes).decode("utf-8")
                 image_clean = image.replace("\n", "").replace("\r", "").strip()
-                texto_imagen = leer_imagene(image_clean)
+                texto_imagen = leer_imagen(image_clean)
                 texto_total.append(f"| Pagina {page_num + 1}: {texto_imagen} |")
 
-        return "\n\n".join(texto_total) if texto_total else "No se pudo extraer texto del archivo"
+        documento_texto = "\n\n".join(texto_total) if texto_total else "No se pudo extraer texto del archivo"
+
+        solicitud.documento_texto = documento_texto
+
+        return {"solicitud": solicitud}
 
     except HTTPException:
+        logger.error(f"Error HTTPException al procesar el archivo {nombre_archivo}")
         raise
     except Exception as e:
+        logger.error(f"Error inesperado al procesar el archivo {nombre_archivo}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error inesperado al procesar el archivo: {str(e)}"
@@ -120,7 +141,8 @@ def extraer_datos_triaje(state: StatusTriaje) -> dict:
             "tipo_archivo": solicitud.tipo_archivo,
             "documento_texto": solicitud.documento_texto,
         })
-    except Exception:
+    except Exception as e:
+        logger.error(f"Error al invocar el agente de triaje para {solicitud.documento_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al procesar el triaje del documento",
@@ -149,7 +171,6 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
             "datos_extraidos": datos_extraidos
         })
 
-
         metadata = MetadataDocumento.from_triaje_to_metadata(
             solicitud=solicitud,
             clasificacion=clasificacion,
@@ -157,54 +178,49 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
             decision=decision_enrutamiento
         )
 
-        almacenamiento_oci = None
-
         if not es_texto:
 
-            resultado_subida = medi_flow_storage.subir_documento(
+            respuesta_subida = medi_flow_storage.subir_documento(
                 contenido=archivo_bytes, 
                 metadata=metadata,
                 nombre_archivo=nombre_archivo
             )
 
-            almacenamiento_oci = AlmacenamientoOCI(
-                    bucket=resultado_subida.bucket,
-                    ruta_objeto=resultado_subida.ruta_objeto
-                )
+            if respuesta_subida.exito:
+                logger.info(f"Documento {respuesta_subida.documento_id} subido exitosamente a OCI: {respuesta_subida.bucket}/{respuesta_subida.ruta_objeto}")
+            else:
+                logger.error(f"Error al subir el documento {nombre_archivo} a OCI")
 
-        respuesta_triaje = RespuestaTriaje(
-            documento_id=solicitud.documento_id,
-            clasificacion=clasificacion,
-            datos_extraidos=datos_extraidos,
-            decision_enrutamiento=decision_enrutamiento,
-            almacenamiento_oci=almacenamiento_oci
-        )
 
-        resultados_triaje = medi_flow_storage.subir_resultado_triaje(
-            documento_id=respuesta_triaje.documento_id,
-            resultado_json=respuesta_triaje.model_dump(mode="json"),
+        respuesta_triaje_dict = {
+            "documento_id":solicitud.documento_id,
+            "clasificacion":clasificacion.model_dump(mode="json"),
+            "datos_extraidos":datos_extraidos.model_dump(mode="json"),
+            "decision_enrutamiento":decision_enrutamiento.model_dump(mode="json"),
+        }
+
+        respuesta_triaje = medi_flow_storage.subir_resultado_triaje(
+            documento_id=respuesta_triaje_dict["documento_id"],
+            resultado_json=respuesta_triaje_dict,
             metadata=metadata
         )
 
         almacenamiento_oci = AlmacenamientoOCI(
-            bucket=resultados_triaje.bucket,
-            ruta_objeto=resultados_triaje.ruta_objeto
+            bucket=respuesta_triaje.bucket,
+            ruta_objeto=respuesta_triaje.ruta_objeto
         )
 
+        return {
+        "decision_enrutamiento": decision_enrutamiento,
+        "almacenamiento_oci": almacenamiento_oci
+        }
 
     except Exception as e:
-        print(f"Error durante el procesamiento del agente: {e}")
-    
+        logger.error(f"Error durante el procesamiento del agente de enrutamiento para {solicitud.documento_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
         )
-
-    return {""
-    "decision_enrutamiento": decision_enrutamiento,
-    "almacenamiento_oci": almacenamiento_oci
-    }
-
 
 
 
