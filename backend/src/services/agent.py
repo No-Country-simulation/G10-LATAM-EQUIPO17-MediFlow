@@ -1,4 +1,6 @@
-from asyncio.log import logger
+import logging
+
+logger = logging.getLogger("mediflow.agent")
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from fastapi import HTTPException, status
@@ -61,16 +63,17 @@ def get_es_texto(state:StatusTriaje) -> bool:
 def leer_imagen(imagen: str) -> str:
     try:
         resultado = agente_vision.invoke({"imagen": imagen})
+
+        return resultado.contenido
     except Exception as e:
-        logger.error(f"Error al procesar la imagen del documento para {solicitud.documento_id}: {str(e)}", exc_info=True)
+        logger.error(f"Error al procesar la imagen del documento: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al procesar la imagen del documento",
         )
-    return resultado.contenido
 
 
-def extraer_texto_multiformato(state: StatusTriaje) -> str:
+def extraer_texto_multiformato(state: StatusTriaje) -> dict:
 
     nombre_archivo = state["nombre_archivo"]
     archivo_bytes = state["archivo_bytes"]
