@@ -1,9 +1,14 @@
+import logging
 import os
 import base64
 import tempfile
 from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger("mediflow.config")
+
+_oci_key_path: str | None = None
 
 
 class Settings(BaseSettings):
@@ -60,20 +65,27 @@ class Settings(BaseSettings):
     def es_produccion(self) -> bool:
         return bool(self.oci_private_key_base64 and self.oci_user and self.oci_tenancy)
 
+    def validar_produccion(self):
+        if self.es_produccion and self.jwt_secret_key == "mediflow-dev-secret-cambiar-en-prod":
+            raise RuntimeError("JWT_SECRET_KEY no puede usar el valor por defecto en produccion")
+
     def obtener_oci_config(self) -> dict:
+        global _oci_key_path
         if self.es_produccion:
-            key_bytes = base64.b64decode(self.oci_private_key_base64)
-            key_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
-            key_file.write(key_bytes)
-            key_file.close()
-            os.chmod(key_file.name, 0o600)
+            if _oci_key_path is None or not os.path.exists(_oci_key_path):
+                key_bytes = base64.b64decode(self.oci_private_key_base64)
+                key_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pem")
+                key_file.write(key_bytes)
+                key_file.close()
+                os.chmod(key_file.name, 0o600)
+                _oci_key_path = key_file.name
 
             return {
                 "user": self.oci_user,
                 "fingerprint": self.oci_fingerprint,
                 "tenancy": self.oci_tenancy,
                 "region": self.oci_region,
-                "key_file": key_file.name,
+                "key_file": _oci_key_path,
             }
         else:
             import oci

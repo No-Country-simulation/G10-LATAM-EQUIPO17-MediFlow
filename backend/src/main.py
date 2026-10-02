@@ -25,6 +25,7 @@ async def purgar_tokens_expirados():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    settings.validar_produccion()
     await crear_tablas()
     eliminados = await purgar_tokens_expirados()
     if eliminados:
@@ -39,6 +40,8 @@ app = FastAPI(
     title="MediFlow API",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url=None if settings.es_produccion else "/docs",
+    redoc_url=None if settings.es_produccion else "/redoc",
 )
 
 app.state.limiter = limiter
@@ -49,7 +52,8 @@ async def security_headers(request: Request, call_next):
     response: Response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["X-XSS-Protection"] = "0"
+    response.headers["Content-Security-Policy"] = "default-src 'none'"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     if settings.es_produccion:
@@ -65,12 +69,13 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
-origins = [o.strip() for o in settings.allowed_origins.split(",")] if settings.allowed_origins != "*" else ["*"]
+origins = [o.strip() for o in settings.allowed_origins.split(",")]
+usa_credenciales = "*" not in origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=usa_credenciales,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )

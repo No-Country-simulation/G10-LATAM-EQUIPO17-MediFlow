@@ -184,9 +184,15 @@ class MediFlowStorage:
     # --- Utils ---
 
     @staticmethod
+    def _sanitizar_nombre(nombre: str) -> str:
+        nombre = nombre.replace("\\", "/").split("/")[-1]
+        nombre = nombre.replace("\x00", "").replace("..", "")
+        return nombre or "archivo.bin"
+
+    @staticmethod
     def _construir_ruta(documento_id: str, nombre_archivo: str | None = None) -> str:
         hoy = datetime.utcnow()
-        nombre = nombre_archivo or f"{documento_id}.bin"
+        nombre = MediFlowStorage._sanitizar_nombre(nombre_archivo) if nombre_archivo else f"{documento_id}.bin"
         return f"{hoy:%Y/%m/%d}/{nombre}"
 
     @staticmethod
