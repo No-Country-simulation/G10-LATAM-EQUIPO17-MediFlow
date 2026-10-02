@@ -34,11 +34,7 @@ umbral_confianza_minimo = settings.umbral_confianza_minimo
 medi_flow_storage = MediFlowStorage(settings=settings)
 
 
-#--------------------------- Logica ------------------------------------
-
-# LLM
-
-llm_gemini= ChatGoogleGenerativeAI(
+llm_gemini = ChatGoogleGenerativeAI(
     model=settings.llm_provider,
     google_api_key=settings.llm_api_key,
     temperature=0.0,
@@ -50,12 +46,8 @@ agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(Salida
 
 agente_enrutador = system_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
 
-# --------
-
 extensiones = settings.extensiones_archivos
 
-
-# Funciones / Nodos
 
 def get_es_texto(state:StatusTriaje) -> bool:
     return state["es_texto"]
@@ -127,7 +119,7 @@ def extraer_texto_multiformato(state: StatusTriaje) -> dict:
         logger.error(f"Error inesperado al procesar el archivo {nombre_archivo}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error inesperado al procesar el archivo: {str(e)}"
+            detail="Error inesperado al procesar el archivo"
         )
     finally:
         if doc:
@@ -222,7 +214,7 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
         logger.error(f"Error durante el procesamiento del agente de enrutamiento para {solicitud.documento_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ocurrió un error al procesar el triaje con la Inteligencia Artificial: {str(e)}"
+            detail="Error interno en el pipeline de enrutamiento"
         )
 
 
