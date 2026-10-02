@@ -30,7 +30,7 @@ class TipoDocumento(str, Enum):
 # --- Entrada (request /triaje) ---
 
 class SolicitudTriaje(BaseModel):
-    documento_id: str = Field(..., examples=["DOC-CLIN-2026-8942"])
+    documento_id: str = Field(..., pattern=r"^[A-Za-z0-9_\-]+$", max_length=128, examples=["DOC-CLIN-2026-8942"])
     tipo_archivo: str = Field(..., examples=["PDF", "imagen", "texto"])
     documento_texto: str | None = None
     canal_origen: str = Field(default="manual", examples=["Guardia_Emergencias", "Consulta_Externa"])

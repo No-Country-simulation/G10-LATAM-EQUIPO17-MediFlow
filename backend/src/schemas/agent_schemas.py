@@ -9,8 +9,6 @@ from src.schemas.documento import (
 )
 
 
-#------     INICIO DE LOS SCHEMAS ------------
-
 class StatusTriaje(TypedDict, total=False):
     solicitud: SolicitudTriaje
     archivo_bytes: bytes | None
@@ -28,7 +26,6 @@ class SalidaAgenteExtractor(BaseModel):
     datos_extraidos: DatosExtraidos = Field(
     )
 
-# SCHEMA PARA EXTRAER EL TEXTO DE IMAGENES
 class ContenidoImagen(BaseModel):
     contenido: str = Field(
         description="Contenido extraído de las imágenes"

@@ -1,9 +1,14 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 
 from src.core.rate_limit import limiter
 from src.schemas.documento import SolicitudTriaje, RespuestaTriaje
 from src.security import requiere_rol, Rol
 from src.security.schemas import TokenPayload
+from src.services.graph import procesar_solicitud_triaje
+
+logger = logging.getLogger("mediflow.triaje")
 
 router = APIRouter(prefix="/triaje", tags=["Triaje Clínico"])
 
@@ -18,11 +23,19 @@ async def procesar_triaje(
     solicitud: SolicitudTriaje,
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
 ):
-    raise HTTPException(
-        status_code=501,
-        detail={"mensaje": "Pipeline de triaje pendiente de implementación",
-                "documento_id": solicitud.documento_id},
-    )
+    if not solicitud.documento_texto:
+        raise HTTPException(status_code=400, detail="documento_texto es requerido para triaje de texto")
+
+    try:
+        return await procesar_solicitud_triaje(
+            solicitud=solicitud,
+            es_texto=True,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error en triaje texto %s: %s", solicitud.documento_id, str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno procesando el triaje")
 
 
 @router.post("/archivo", response_model=RespuestaTriaje)
@@ -40,16 +53,37 @@ async def procesar_triaje_archivo(
             detail=f"Tipo no soportado: {archivo.content_type}. Permitidos: {TIPOS_ARCHIVO_PERMITIDOS}",
         )
 
-    contenido = await archivo.read()
-    if len(contenido) > MAX_ARCHIVO_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Archivo excede el limite de {MAX_ARCHIVO_BYTES // (1024 * 1024)} MB",
-        )
-    await archivo.seek(0)
+    ext = archivo.filename.rsplit(".", 1)[-1].lower() if archivo.filename and "." in archivo.filename else None
+    if not ext or ext not in {"pdf", "png", "jpg", "jpeg"}:
+        raise HTTPException(status_code=400, detail="Extension de archivo no valida")
 
-    raise HTTPException(
-        status_code=501,
-        detail={"mensaje": "Pipeline de triaje con archivo pendiente",
-                "documento_id": documento_id, "archivo": archivo.filename},
+    chunks = []
+    total = 0
+    while chunk := await archivo.read(65536):
+        total += len(chunk)
+        if total > MAX_ARCHIVO_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"Archivo excede el limite de {MAX_ARCHIVO_BYTES // (1024 * 1024)} MB",
+            )
+        chunks.append(chunk)
+    contenido = b"".join(chunks)
+
+    solicitud = SolicitudTriaje(
+        documento_id=documento_id,
+        tipo_archivo=ext,
+        canal_origen=canal_origen,
     )
+
+    try:
+        return await procesar_solicitud_triaje(
+            solicitud=solicitud,
+            es_texto=False,
+            archivo_bytes=contenido,
+            nombre_archivo=archivo.filename,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Error en triaje archivo %s: %s", documento_id, str(e), exc_info=True)
+        raise HTTPException(status_code=500, detail="Error interno procesando el archivo")
