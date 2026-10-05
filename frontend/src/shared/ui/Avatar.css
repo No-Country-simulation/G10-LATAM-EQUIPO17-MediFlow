@@ -1,0 +1,12 @@
+.mf-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--color-mf-sky-mid);
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  user-select: none;
+}

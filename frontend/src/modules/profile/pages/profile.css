@@ -1,0 +1,84 @@
+.profile-page__intro { margin-bottom: 26px; }
+
+.profile-page__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-mf-sky-mid);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.profile-page__intro h1 {
+  margin: 12px 0 8px;
+  color: var(--color-mf-dark);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.profile-page__intro p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--color-mf-dark-3);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.profile-card {
+  display: grid;
+  gap: 18px;
+  max-width: 520px;
+  padding: 26px 28px;
+  border: 1px solid var(--color-mf-bg-4);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 34px rgba(23, 59, 77, 0.06);
+}
+
+.profile-card__head { display: flex; align-items: center; gap: 14px; }
+
+.profile-card__id h2 { margin: 0; color: var(--color-mf-dark); font-family: var(--font-display); font-size: 1.2rem; font-weight: 800; }
+
+.profile-card__rol {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--color-mf-sky-mid);
+  background: var(--color-mf-bg-2);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.profile-card__list { display: grid; gap: 4px; margin: 0; }
+
+.profile-card__list div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-mf-bg-4);
+}
+
+.profile-card__list dt { color: var(--color-mf-dark-3); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.profile-card__list dd { margin: 0; color: var(--color-mf-dark-2); font-size: 0.82rem; }
+
+.profile-card__note {
+  margin: 0;
+  padding-top: 4px;
+  color: var(--color-mf-dark-3);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.profile-card__note code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: var(--color-mf-dark-2);
+  background: var(--color-mf-bg-3);
+  font-size: 0.68rem;
+}
