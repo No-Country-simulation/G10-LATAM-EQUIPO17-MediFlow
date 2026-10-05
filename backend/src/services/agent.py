@@ -31,7 +31,14 @@ settings = get_settings()
 
 umbral_confianza_minimo = settings.umbral_confianza_minimo
 
-medi_flow_storage = MediFlowStorage(settings=settings)
+_medi_flow_storage: MediFlowStorage | None = None
+
+
+def get_storage() -> MediFlowStorage:
+    global _medi_flow_storage
+    if _medi_flow_storage is None:
+        _medi_flow_storage = MediFlowStorage(settings=settings)
+    return _medi_flow_storage
 
 
 llm_gemini = ChatGoogleGenerativeAI(
@@ -175,7 +182,7 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
 
         if not es_texto:
 
-            respuesta_subida = medi_flow_storage.subir_documento(
+            respuesta_subida = get_storage().subir_documento(
                 contenido=archivo_bytes, 
                 metadata=metadata,
                 nombre_archivo=nombre_archivo
@@ -194,7 +201,7 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
             "decision_enrutamiento":decision_enrutamiento.model_dump(mode="json"),
         }
 
-        respuesta_triaje = medi_flow_storage.subir_resultado_triaje(
+        respuesta_triaje = get_storage().subir_resultado_triaje(
             documento_id=respuesta_triaje_dict["documento_id"],
             resultado_json=respuesta_triaje_dict,
             metadata=metadata
