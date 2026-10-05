@@ -1,0 +1,55 @@
+.mf-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mf-select select {
+  width: 100%;
+  appearance: none;
+  min-height: 40px;
+  padding: 0 38px 0 14px;
+  border: 1px solid var(--color-mf-bg-4);
+  border-radius: 10px;
+  color: var(--color-mf-dark);
+  background: var(--color-mf-bg-2);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.mf-select select:hover:not(:disabled) {
+  border-color: var(--color-mf-sky);
+  background: var(--color-mf-bg-3);
+}
+
+.mf-select select:focus-visible {
+  border-color: var(--color-mf-sky);
+  outline: 3px solid rgba(113, 187, 209, 0.22);
+}
+
+.mf-select select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mf-select__caret {
+  position: absolute;
+  right: 13px;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--color-mf-dark-3);
+  transition: transform 180ms ease;
+}
+
+.mf-select select:focus-visible + .mf-select__caret {
+  transform: rotate(180deg);
+}

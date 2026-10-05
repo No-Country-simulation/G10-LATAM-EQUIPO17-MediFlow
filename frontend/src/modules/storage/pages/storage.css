@@ -1,0 +1,110 @@
+.storage-page__intro { margin-bottom: 26px; }
+
+.storage-page__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-mf-sky-mid);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.storage-page__intro h1 {
+  margin: 12px 0 8px;
+  color: var(--color-mf-dark);
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.storage-page__intro p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--color-mf-dark-3);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.storage-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+  padding: 26px 28px;
+  border: 1px solid var(--color-mf-bg-4);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 14px 34px rgba(23, 59, 77, 0.06);
+}
+
+.storage-card h2 {
+  margin: 0;
+  color: var(--color-mf-dark);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.storage-card__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.storage-card__status.is-ok { color: #27816e; background: #e4f5ef; }
+.storage-card__status.is-warn { color: #b8860b; background: #faf3e3; }
+
+.storage-card__dot { width: 8px; height: 8px; border-radius: 50%; }
+.storage-card__status.is-ok .storage-card__dot { background: #2fa88e; }
+.storage-card__status.is-warn .storage-card__dot { background: #d8a00a; }
+
+.storage-card__msg { margin: 0; color: var(--color-mf-dark-3); font-size: 0.82rem; line-height: 1.6; }
+
+.storage-card__buckets {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.storage-card__buckets li {
+  padding: 9px 12px;
+  border-radius: 9px;
+  color: var(--color-mf-dark-2);
+  background: var(--color-mf-bg-2);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.storage-card__btn {
+  align-self: flex-start;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--color-mf-sky);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 800;
+  transition: background 180ms ease, box-shadow 180ms ease;
+}
+
+.storage-card__btn:hover {
+  background: #5faec4;
+  box-shadow: 0 10px 22px rgba(113, 187, 209, 0.28);
+}
+
+.storage-card.is-loading { color: var(--color-mf-dark-3); font-size: 0.84rem; }
+.storage-card.is-error { border-color: #e6b7bd; }
+.storage-card.is-error p { margin: 0; color: #b44d58; font-size: 0.82rem; line-height: 1.6; }

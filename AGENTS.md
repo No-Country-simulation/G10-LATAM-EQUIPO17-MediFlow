@@ -159,6 +159,28 @@ modules/<modulo>/assets/
 
 y almacenar el recurso dentro de ese módulo.
 
+## Regla de estructura global de la aplicación
+
+Los elementos que forman la estructura persistente de la aplicación, como `DashboardLayout`, `Sidebar`, `Header` y otros shells de navegación, deben ubicarse dentro de `src/app/layouts/`, ya que conocen rutas, sesión, roles y contexto global de MediFlow.
+
+Los componentes visuales genéricos y reutilizables, como `Button`, `Input`, `Select`, `Modal`, `Badge` y `Pagination`, deben ubicarse en `src/shared/ui/` únicamente cuando exista una necesidad real de reutilización entre múltiples módulos.
+
+Los componentes relacionados directamente con una funcionalidad de negocio deben permanecer dentro de `src/modules/<modulo>/components/`.
+
+No crear `shared/components/`; utilizar `shared/ui/` como única ubicación para componentes visuales compartidos.
+
+### Reglas relacionadas
+
+- No mover componentes a `shared` por anticipación.
+- Crear `hooks/`, `store/` o `assets/` dentro de un módulo únicamente cuando exista una necesidad real.
+- No modificar módulos no relacionados con la tarea actual.
+- No cambiar arquitectura global sin informar la necesidad.
+- Priorizar el cambio mínimo necesario.
+- Respetar la separación entre `app`, `modules` y `shared`.
+- No duplicar componentes existentes.
+
+Los guards de ruta y el control de sesión viven en `src/app/` (`guards/`, `session.js`, `navigation.jsx`, `icons.jsx`). La infraestructura HTTP común (cliente, tokens, baseURL) vive en `src/shared/api/`; los servicios de cada módulo consumen esa configuración.
+
 Regla principal
 
 Antes de realizar cualquier cambio, aplicar siempre la siguiente lógica:
@@ -178,3 +200,15 @@ Implementar únicamente ese cambio.
 El asistente debe actuar como colaborador del proyecto, no como responsable de redefinirlo por iniciativa propia.
 
 Si encuentra oportunidades de mejora fuera del alcance solicitado, debe señalarlas como recomendaciones, pero no implementarlas automáticamente.
+
+## Memoria 
+- Al empezar , lee `MEMORY.md` para conocer el estado del proyecto y las decisiones totales.
+- Al finalizar una tarea , actualizalo: estado actual , decisiones importantes (con su poruqe ) y errores a evitar 
+- Mantenlo breve (Maximo 70 lineas ) , resume o elimina lo que ya no aporte .
+- Si algo se convierte en una regla permanente propor movelor a AGENTS.nd en lugar de dejarlo en la memoria . 
+- No guardes nunca datos sensibles (claves , tokens , datos personales).
+
+## Limites
+- Siempre respetar las pautas y arquitectura establecidos 
+- Siempre actualizar `MEMORY.md` al terminar cada tarea
+- Pregunta antes : crear archivos nuevos , cambiar el formato de los datos guardados 

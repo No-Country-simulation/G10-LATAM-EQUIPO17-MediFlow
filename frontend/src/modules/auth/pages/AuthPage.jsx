@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import AuthVisualPanel from '../components/AuthVisualPanel'
 import LoginForm from '../components/LoginForm'
 import RegisterForm from '../components/RegisterForm'
+import { getSession, saveSession } from '../../../app/session'
 import './AuthPage.css'
 
 const tabs = [
@@ -11,10 +13,29 @@ const tabs = [
 
 function AuthPage({ initialTab = 'login' }) {
   const [tab, setTab] = useState(initialTab)
+  const navigate = useNavigate()
 
   const handleSubmit = (data) => {
     // Pendiente: integrar con /auth/login y /auth/registro del backend.
     console.info('AuthPage::submit', tab, data)
+
+    if (tab === 'registro') {
+      saveSession({
+        nombre: data.nombre,
+        email: data.correo,
+        rol: 'paciente',
+      })
+    } else {
+      const previa = getSession()
+      const nombre = String(data.correo || '').split('@')[0]
+      saveSession({
+        nombre: previa?.nombre || nombre,
+        email: data.correo,
+        rol: previa?.rol || 'paciente',
+      })
+    }
+
+    navigate('/dashboard', { replace: true })
   }
 
   return (
