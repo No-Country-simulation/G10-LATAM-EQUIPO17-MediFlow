@@ -19,8 +19,8 @@ class Settings(BaseSettings):
     # OCI (modo local: archivo .pem)
     oci_config_path: str = "~/.oci/config"
     oci_config_profile: str = "DEFAULT"
-    oci_namespace: str = Field(...)
-    oci_compartment_id: str = Field(...)
+    oci_namespace: str = ""
+    oci_compartment_id: str = ""
     oci_region: str = "sa-saopaulo-1"
 
     # OCI (modo produccion: credenciales por variables de entorno)
