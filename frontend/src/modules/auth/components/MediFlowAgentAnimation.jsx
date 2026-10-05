@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { directories } from './directories'
-import agenteFlowData from '../assets/agente-flowData.png'
+import agenteFlowData from '../../../shared/assets/agente-flowData.png'
 import './MediFlowAgentAnimation.css'
 
 function createAgentAnimation({
