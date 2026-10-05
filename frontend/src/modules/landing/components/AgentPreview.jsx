@@ -1,3 +1,4 @@
+import agenteFlowData from '../../../shared/assets/agente-flowData.png'
 import './AgentPreview.css'
 
 const procesamiento = [
@@ -56,20 +57,6 @@ function FileIcon({ tipo }) {
   )
 }
 
-function ReCheckIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-      <path
-        d="M3.6 7.7 5.9 10 11 4.9"
-        stroke="var(--color-mf-sky)"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 function AgentPreview() {
   return (
     <div className="agent">
@@ -92,23 +79,20 @@ function AgentPreview() {
         </div>
       ))}
 
-      <article className="agent__card">
-        <div className="agent__card-head">
-          <h2 className="agent__card-title">MediFlow Agent</h2>
-          <span className="agent__card-status">
-            <span className="agent__status-dot" aria-hidden="true" />
-            Procesando...
-          </span>
-        </div>
-        <ul className="agent__checks">
+      <div className="agent__figure">
+        <img
+          className="agent__character"
+          src={agenteFlowData}
+          alt="Agente inteligente MediFlow"
+        />
+        <ul className="agent__chips">
           {procesamiento.map((item) => (
-            <li key={item} className="agent__check">
-              <ReCheckIcon />
-              <span>{item}</span>
+            <li key={item} className="agent__chip">
+              {item}
             </li>
           ))}
         </ul>
-      </article>
+      </div>
     </div>
   )
 }
