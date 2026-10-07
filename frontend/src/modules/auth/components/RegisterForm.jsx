@@ -1,21 +1,28 @@
 import { useState } from 'react'
 import './AuthForms.css'
 
-function RegisterForm({ onSubmit }) {
+function RegisterForm({ onSubmit, isSubmitting = false }) {
   const [nombre, setNombre] = useState('')
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [confirmacion, setConfirmacion] = useState('')
+  const [errorConfirmacion, setErrorConfirmacion] = useState('')
 
   const handleSubmit = (event) => {
     event.preventDefault()
     if (!nombre || !correo || !contrasena || !confirmacion) return
-    if (contrasena !== confirmacion) return
+    if (contrasena !== confirmacion) {
+      setErrorConfirmacion('Las contraseñas no coinciden')
+      return
+    }
+
+    setErrorConfirmacion('')
+
     onSubmit?.({ nombre, correo, contrasena })
   }
 
   return (
-    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+    <form className="auth-form" onSubmit={handleSubmit}>
       <label className="auth-form__field">
         <span className="auth-form__label">Nombre completo</span>
         <input
@@ -68,14 +75,22 @@ function RegisterForm({ onSubmit }) {
           placeholder="Repite tu contraseña"
           autoComplete="new-password"
           value={confirmacion}
-          onChange={(event) => setConfirmacion(event.target.value)}
+          onChange={(event) => {
+            setConfirmacion(event.target.value)
+            setErrorConfirmacion('')
+          }}
           minLength={8}
           required
         />
+        {errorConfirmacion && (
+          <span className="auth-form__error" role="alert">
+            {errorConfirmacion}
+          </span>
+        )}
       </label>
 
-      <button type="submit" className="auth-form__submit">
-        Crear cuenta
+      <button type="submit" className="auth-form__submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
       </button>
     </form>
   )

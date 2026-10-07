@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './AuthForms.css'
 
-function LoginForm({ onSubmit }) {
+function LoginForm({ onSubmit, isSubmitting = false }) {
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
 
@@ -12,7 +12,7 @@ function LoginForm({ onSubmit }) {
   }
 
   return (
-    <form className="auth-form" onSubmit={handleSubmit} noValidate>
+    <form className="auth-form" onSubmit={handleSubmit}>
       <label className="auth-form__field">
         <span className="auth-form__label">Correo electrónico</span>
         <input
@@ -37,12 +37,13 @@ function LoginForm({ onSubmit }) {
           autoComplete="current-password"
           value={contrasena}
           onChange={(event) => setContrasena(event.target.value)}
+          minLength={8}
           required
         />
       </label>
 
-      <button type="submit" className="auth-form__submit">
-        Iniciar sesión
+      <button type="submit" className="auth-form__submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
       </button>
     </form>
   )

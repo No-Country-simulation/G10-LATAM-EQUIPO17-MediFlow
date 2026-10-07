@@ -185,3 +185,15 @@
     padding: 0 0 24px;
   }
 }
+
+.auth-card__error {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(180, 63, 63, 0.25);
+  border-radius: 10px;
+  background: rgba(180, 63, 63, 0.08);
+  color: #9c3030;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-align: center;
+}

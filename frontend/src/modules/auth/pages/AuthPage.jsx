@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import AuthVisualPanel from '../components/AuthVisualPanel'
 import LoginForm from '../components/LoginForm'
 import RegisterForm from '../components/RegisterForm'
-import { getSession, saveSession } from '../../../app/session'
+import { saveSession } from '../../../app/session'
+import {iniciarSesion,obtenerMensajeAuth,registrarUsuario} from '../services/authService'
 import './AuthPage.css'
 
 const tabs = [
@@ -14,28 +15,37 @@ const tabs = [
 function AuthPage({ initialTab = 'login' }) {
   const [tab, setTab] = useState(initialTab)
   const navigate = useNavigate()
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (data) => {
-    // Pendiente: integrar con /auth/login y /auth/registro del backend.
-    console.info('AuthPage::submit', tab, data)
+  const handleSubmit = async (data) => {
+    setErrorMessage('')
+    setIsSubmitting(true)
 
-    if (tab === 'registro') {
+    try {
+      const resultado = tab === 'registro'
+        ? await registrarUsuario({
+            nombre: data.nombre,
+            email: data.correo,
+            password: data.contrasena,
+          })
+        : await iniciarSesion({
+            email: data.correo,
+            password: data.contrasena,
+          })
+
       saveSession({
-        nombre: data.nombre,
-        email: data.correo,
-        rol: 'paciente',
+        nombre: resultado.usuario.nombre,
+        email: resultado.usuario.email,
+        rol: resultado.usuario.rol,
       })
-    } else {
-      const previa = getSession()
-      const nombre = String(data.correo || '').split('@')[0]
-      saveSession({
-        nombre: previa?.nombre || nombre,
-        email: data.correo,
-        rol: previa?.rol || 'paciente',
-      })
+
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setErrorMessage(obtenerMensajeAuth(error))
+    } finally {
+      setIsSubmitting(false)
     }
-
-    navigate('/dashboard', { replace: true })
   }
 
   return (
@@ -89,8 +99,9 @@ function AuthPage({ initialTab = 'login' }) {
               </svg>
               Volver al inicio
             </a>
-
-            <h2 className="auth-card__title">{tab === 'login' ? 'Bienvenido de nuevo' : 'Crear cuenta'}</h2>
+            <h2 className="auth-card__title">
+              {tab === 'login' ? 'Bienvenido de nuevo' : 'Crear cuenta'}
+            </h2>
             <p className="auth-card__subtitle">
               {tab === 'login'
                 ? 'Accede a tu espacio de trabajo en MediFlow.'
@@ -105,7 +116,10 @@ function AuthPage({ initialTab = 'login' }) {
                   role="tab"
                   aria-selected={tab === item.id}
                   className={tab === item.id ? 'auth-card__tab is-active' : 'auth-card__tab'}
-                  onClick={() => setTab(item.id)}
+                  onClick={() => {
+                    setTab(item.id)
+                    setErrorMessage('')
+                  }}
                 >
                   {item.label}
                 </button>
@@ -113,15 +127,20 @@ function AuthPage({ initialTab = 'login' }) {
             </div>
 
             {tab === 'login' ? (
-              <LoginForm onSubmit={handleSubmit} />
+              <LoginForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
             ) : (
               <>
-                <RegisterForm onSubmit={handleSubmit} />
+                <RegisterForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                 <p className="auth-card__note">
                   Tu cuenta se creará con el rol de paciente. La gestión de roles estará disponible
                   próximamente.
                 </p>
               </>
+            )}
+            {errorMessage && (
+              <p className="auth-card__error" role="alert">
+                {errorMessage}
+              </p>
             )}
           </div>
 
