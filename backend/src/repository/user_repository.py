@@ -17,12 +17,12 @@ class UserRepository:
         await self.db.refresh(usuario)
         return usuario
     
-    async def find_by_email(self, email: str) -> Optional[Usuario]:
+    async def find_user_by_email(self, email: str) -> Optional[Usuario]:
         stmt = select(Usuario).where(Usuario.email == email)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def find_by_id(self, user_id:str) -> Optional[Usuario]:
+    async def find_user_by_id(self, user_id:str) -> Optional[Usuario]:
         return await self.db.get(Usuario, user_id)
 
     async def list_users(self) -> list[Usuario]:
