@@ -135,7 +135,7 @@ class AuthService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado",
             )
-        self.token_revocado_repository.create(TokenRevocado(
+        await self.token_revocado_repository.create(TokenRevocado(
             jti=jti,    
             expira_en=datetime.fromtimestamp(payload["exp"], tz=timezone.utc),
         ))
