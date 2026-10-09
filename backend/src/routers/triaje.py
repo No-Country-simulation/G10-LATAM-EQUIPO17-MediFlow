@@ -1,10 +1,13 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.database import get_db
 from src.core.rate_limit import limiter
-from src.schemas.documento import SolicitudTriaje, RespuestaTriaje
-from src.security import requiere_rol, Rol
+from src.repository.registro_triaje_repository import RegistroTriajeRepository
+from src.schemas.documento import SolicitudTriaje, RespuestaTriaje, RegistroTriajeResponse
+from src.security import obtener_usuario_actual, requiere_rol, Rol
 from src.security.schemas import TokenPayload
 from src.services.graph import procesar_solicitud_triaje
 
@@ -14,6 +17,32 @@ router = APIRouter(prefix="/triaje", tags=["Triaje Clínico"])
 
 TIPOS_ARCHIVO_PERMITIDOS = ["application/pdf", "image/png", "image/jpeg", "image/jpg"]
 MAX_ARCHIVO_BYTES = 10 * 1024 * 1024
+
+
+@router.get(
+    "/registros",
+    response_model=list[RegistroTriajeResponse],
+    summary="Consultar registros de triaje",
+    description=(
+        "Retorna los registros de triaje del usuario autenticado. "
+        "Si el usuario es ADMIN, retorna todos los registros."
+    ),
+    responses={
+        200: {"description": "Lista de registros de triaje"},
+        401: {"description": "Token invalido o expirado"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
+@limiter.limit("30/minute")
+async def listar_registros_triaje(
+    request: Request,
+    usuario: TokenPayload = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db),
+):
+    repo = RegistroTriajeRepository(db)
+    if usuario.rol == Rol.ADMIN:
+        return await repo.find_all()
+    return await repo.find_by_usuario(usuario.sub)
 
 
 @router.post("/", response_model=RespuestaTriaje)
