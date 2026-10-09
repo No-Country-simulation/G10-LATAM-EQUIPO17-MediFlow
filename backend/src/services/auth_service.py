@@ -115,20 +115,8 @@ class AuthService:
                     detail="Token ya fue utilizado",
                 )
 
-        try:
-            usuario = await self.user_repository.find_user_by_id(payload.get("sub"))
-        except IntegrityError as e:
-            logger.error(f"Error de integridad al obtener usuario: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Uno de los datos ingresados ya se encuentra registrado y debe ser único.",
-            )
-        except SQLAlchemyError as e:
-            logger.error(f"Error de SQLAlchemy al obtener usuario: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error interno al registrar el usuario.",
-            )
+
+        usuario = await self.user_repository.find_user_by_id(payload.get("sub"))
         
         if not usuario:
             raise HTTPException(
@@ -174,31 +162,12 @@ class AuthService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Usuario no encontrado",
             )
-        return UsuarioResponse(
-            id=usuario.id,
-            nombre=usuario.nombre,
-            email=usuario.email,
-            rol=usuario.rol,
-            activo=usuario.activo,
-            created_at=usuario.created_at,
-            last_login=usuario.last_login,
-        )
+        return self._to_usuario_response(usuario)
 
     
     async def listar_usuarios(self) -> list[UsuarioResponse]:
         usuarios = await self.user_repository.list_users()
-        return [
-            UsuarioResponse(
-                id=usuario.id,
-                nombre=usuario.nombre,
-                email=usuario.email,
-                rol=usuario.rol,
-                activo=usuario.activo,
-                created_at=usuario.created_at,
-                last_login=usuario.last_login,
-            )
-            for usuario in usuarios
-        ]  
+        return [self._to_usuario_response(usuario) for usuario in usuarios]
 
 
     async def cambiar_rol(self, usuario_id: str, admin_id: str, cambio_rol_request: CambioRolRequest) -> UsuarioResponse:
@@ -216,11 +185,15 @@ class AuthService:
                 detail="Usuario no encontrado",
             )
         usuario = await self.user_repository.update_rol(usuario, cambio_rol_request.rol)
+        return self._to_usuario_response(usuario)
+
+    def _to_usuario_response(self, usuario: Usuario) -> UsuarioResponse:
         return UsuarioResponse(
             id=usuario.id,
             nombre=usuario.nombre,
             email=usuario.email,
             rol=usuario.rol,
             activo=usuario.activo,
+            created_at=usuario.created_at,
             last_login=usuario.last_login,
         )

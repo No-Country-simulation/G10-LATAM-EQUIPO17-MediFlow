@@ -1,7 +1,4 @@
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, HTTPException, Request, status, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Request, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.auth_service import AuthService
@@ -10,8 +7,6 @@ from src.repository.token_revocado_repository import TokenRevocadoRepository
 
 from src.core.database import get_db
 from src.core.rate_limit import limiter
-from src.models.usuario import Usuario
-from src.models.token_revocado import TokenRevocado
 from src.security import (
     obtener_usuario_actual,
     requiere_rol,
