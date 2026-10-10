@@ -166,6 +166,7 @@ class RegistroTriajeResponse(BaseModel):
     id: str
     ruta_documento: str | None = None
     ruta_triaje: str
+    bucket: str
     id_usuario: str
     created_at: datetime
 

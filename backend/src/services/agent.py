@@ -8,6 +8,7 @@ import pymupdf as fitz
 import base64
 from src.core.config import get_settings
 from src.services.oci_storage import MediFlowStorage
+from src.models.registro_triaje import RegistroTriaje
 
 from src.schemas.agent_schemas import (
     SalidaAgenteExtractor,
@@ -156,7 +157,7 @@ def extraer_datos_triaje(state: StatusTriaje) -> dict:
     }
 
 
-def enrutar_triaje(state: StatusTriaje)-> dict:
+async def enrutar_triaje(state: StatusTriaje)-> dict:
 
     solicitud = state["solicitud"]
     clasificacion = state["clasificacion"]
@@ -164,6 +165,8 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
     archivo_bytes = state["archivo_bytes"]
     nombre_archivo = state["nombre_archivo"]
     es_texto = state["es_texto"]
+    usuario_id = state["usuario_id"]
+    repositorio_triaje = state["repositorio_triaje"]
 
     try:
 
@@ -180,6 +183,8 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
             decision=decision_enrutamiento
         )
 
+        ruta_documento = None
+
         if not es_texto:
 
             respuesta_subida = get_storage().subir_documento(
@@ -190,8 +195,12 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
 
             if respuesta_subida.exito:
                 logger.info(f"Documento {respuesta_subida.documento_id} subido exitosamente a OCI: {respuesta_subida.bucket}/{respuesta_subida.ruta_objeto}")
+                ruta_documento = respuesta_subida.ruta_objeto
             else:
                 logger.error(f"Error al subir el documento {nombre_archivo} a OCI")
+
+        if ruta_documento is None:
+            ruta_documento = "No disponible"
 
 
         respuesta_triaje_dict = {
@@ -210,6 +219,15 @@ def enrutar_triaje(state: StatusTriaje)-> dict:
         almacenamiento_oci = AlmacenamientoOCI(
             bucket=respuesta_triaje.bucket,
             ruta_objeto=respuesta_triaje.ruta_objeto
+        )
+
+        await repositorio_triaje.create(
+            RegistroTriaje(
+                ruta_documento=ruta_documento,
+                ruta_triaje=respuesta_triaje.ruta_objeto,
+                bucket=respuesta_triaje.bucket,
+                id_usuario=usuario_id
+            )
         )
 
         return {
