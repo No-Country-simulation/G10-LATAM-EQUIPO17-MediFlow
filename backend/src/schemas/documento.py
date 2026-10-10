@@ -162,6 +162,14 @@ class ResultadoSubida(BaseModel):
     mensaje: str = ""
 
 
+class RegistroTriajeResponse(BaseModel):
+    id: str
+    ruta_documento: str | None = None
+    ruta_triaje: str
+    id_usuario: str
+    created_at: datetime
+
+
 class ResultadoMovimiento(BaseModel):
     exito: bool
     documento_id: str
