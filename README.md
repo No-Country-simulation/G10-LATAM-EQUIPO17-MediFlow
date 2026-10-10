@@ -63,21 +63,37 @@ El sistema se implementará bajo una Arquitectura RESTful, dividiendo la soluci�
 ### Estructura de Carpetas
 
 ```text
-src/
-├── app/
-├── modules/
-│   └── <modulo>/
-│       ├── components/
-│       ├── pages/
-│       ├── services/
-│       └── types/
-├── shared/
-│   ├── ui/
-│   ├── hooks/
-│   ├── utils/
-│   ├── api/
-│   └── assets/
-└── main.tsx
+frontend/
+├── index.html
+├── package.json
+├── vite.config.js
+├── .oxlintrc.json
+└── src/
+    ├── main.jsx
+    ├── App.jsx
+    ├── App.css
+    ├── index.css
+    ├── app/                          # Capa transversal (guards, layouts, navegación, sesión)
+    │   ├── icons.jsx
+    │   ├── navigation.jsx
+    │   ├── session.js
+    │   ├── guards/
+    │   └── layouts/
+    ├── modules/                      # Módulos por dominio (Screaming Architecture)
+    │   ├── <modulo>/                 # Estructura interna: components/, pages/, services/, types/
+    │   ├── agent/
+    │   ├── auth/
+    │   ├── dashboard/
+    │   ├── document-processing/
+    │   ├── documents/
+    │   ├── landing/
+    │   ├── profile/
+    │   ├── storage/
+    │   └── users/
+    └── shared/                       # Recursos compartidos reutilizables (ui, api, assets)
+        ├── api/
+        ├── assets/
+        └── ui/
 ```
 
 ## Backend
@@ -188,9 +204,23 @@ src/
 
 ### Flujo de Triaje
 
-El pipeline de procesamiento sigue un flujo secuencial orquestado por LangGraph:
+El pipeline de procesamiento sigue un flujo secuencial orquestado por **LangGraph**:
 
-```
+<p align="center">
+  <img src="backend/src/assets/grafo_flujo.png" alt="Grafo del Flujo de Triaje con LangGraph" width="750" />
+</p>
+
+#### Nodos del Grafo
+
+| Nodo | Responsabilidad |
+|------|-----------------|
+| **`START` / `get_es_texto`** | Evalúa condicionalmente la entrada: si es texto plano salta directo al triaje; si es archivo binario, lo deriva al extractor multiformato. |
+| **`nodo_extrator_multiformato`** | Lee y procesa el archivo físico (PyMuPDF para PDFs o modelo multimodal de visión para imágenes JPG/PNG). |
+| **`nodo_extrator_triaje`** | Clasifica el documento (tipo, especialidad, urgencia) y extrae entidades clínicas estructuradas (paciente, CIE-10, medicamentos, score de confianza) con Google Gemini. |
+| **`nodo_enrutador_triaje`** | Compara el score contra el umbral (`>= 0.75`), decide el destino (emergencia, farmacia, auditoría), sube el archivo a OCI Object Storage y persiste el `RegistroTriaje` en base de datos. |
+| **`END`** | Ensambla y retorna el payload final estructurado (`RespuestaTriaje`) al cliente. |
+
+```text
 Documento (PDF/imagen/texto)
         │
         ▼
@@ -209,7 +239,7 @@ Documento (PDF/imagen/texto)
   Registro ──► Base de datos (RegistroTriaje vinculado al usuario)
 ```
 
-Los documentos con score de confianza bajo el umbral configurado (default: 0.75) son derivados automáticamente a auditoría humana.
+Los documentos con score de confianza inferior a `UMBRAL_CONFIANZA_MINIMO` (default: `0.75`) son derivados automáticamente al bucket de auditoría humana.
 
 ### Endpoints de la API
 
@@ -246,47 +276,131 @@ El backend implementa múltiples capas de seguridad orientadas a proteger datos 
 
 ### Variables de Entorno
 
-Copiar `backend/.env.example` a `backend/.env` y configurar:
+Copiar `backend/.env.example` a `backend/.env` y configurar los valores según el entorno:
 
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | URL de conexión a la base de datos | `sqlite+aiosqlite:///./mediflow.db` |
-| `JWT_SECRET_KEY` | Clave secreta para firmar tokens JWT (mín. 32 chars en prod) | `mediflow-dev-secret-cambiar-en-prod` |
-| `ALLOWED_ORIGINS` | Orígenes permitidos para CORS, separados por coma | `*` |
-| `LLM_API_KEY` | API key de Google Gemini | — |
-| `API_KEY_GROQ` | API key de Groq (modelo de visión) | — |
-| `OCI_NAMESPACE` | Namespace de OCI Object Storage | — |
-| `OCI_COMPARTMENT_ID` | Compartment ID de OCI | — |
-| `OCI_REGION` | Región de OCI | `sa-saopaulo-1` |
-| `UMBRAL_CONFIANZA_MINIMO` | Score mínimo para aprobar triaje sin auditoría | `0.75` |
+#### Configuración General y Base de Datos
+
+| Variable | Descripción | Valor por Defecto | Requerido |
+|----------|-------------|-------------------|-----------|
+| `APP_NAME` | Nombre de la aplicación | `MediFlow` | No |
+| `DEBUG` | Modo depuración activo | `true` | No |
+| `DATABASE_URL` | URL de conexión (SQLite local o PostgreSQL) | `sqlite+aiosqlite:///./mediflow.db` | No |
+
+#### Seguridad, Autenticación y CORS
+
+| Variable | Descripción | Valor por Defecto | Requerido |
+|----------|-------------|-------------------|-----------|
+| `JWT_SECRET_KEY` | Clave secreta para firmar tokens JWT (mín. 32 caracteres en producción) | `mediflow-dev-secret-cambiar-en-prod` | Sí (en prod) |
+| `ALLOWED_ORIGINS` | Orígenes autorizados para CORS, separados por coma (no se permite `*` en producción) | `http://localhost:5173,http://localhost:3000` | Sí (en prod) |
+
+#### Modelos de Inteligencia Artificial (LLM & Visión)
+
+| Variable | Descripción | Valor por Defecto | Requerido |
+|----------|-------------|-------------------|-----------|
+| `LLM_PROVIDER` | Modelo principal de Google Gemini para triaje de texto | `gemini-3.8-flash` | No |
+| `LLM_API_KEY` | API key de Google Gemini | — | Sí |
+| `API_KEY_GROQ` | API key de Groq para procesamiento multimodal | — | Sí |
+| `MODEL_GROQ` | Modelo de Groq para análisis visual | `llama-3.2-11b-vision-preview` | No |
+| `UMBRAL_CONFIANZA_MINIMO` | Score mínimo de confianza (0.0 - 1.0) para evitar auditoría manual | `0.75` | No |
+| `EXTENSIONES_ARCHIVOS` | Formatos de archivos soportados para triaje | `["pdf", "png", "jpg", "jpeg"]` | No |
+
+#### Oracle Cloud Infrastructure (OCI) - Object Storage
+
+| Variable | Descripción | Modo | Requerido |
+|----------|-------------|------|-----------|
+| `OCI_NAMESPACE` | Namespace de Object Storage en OCI | Local / Prod | Sí |
+| `OCI_COMPARTMENT_ID` | Compartment OCID en OCI | Local / Prod | Sí |
+| `OCI_REGION` | Región de OCI (`sa-saopaulo-1` o alternativa `sa-bogota-1`) | Local / Prod | Sí (default: `sa-saopaulo-1`) |
+| `OCI_CONFIG_PATH` | Ruta al archivo local de configuración OCI CLI | Local | No (default: `~/.oci/config`) |
+| `OCI_CONFIG_PROFILE` | Perfil en archivo de configuración local | Local | No (default: `DEFAULT`) |
+| `OCI_USER` | OCID de usuario en OCI | Producción | Sí (en prod) |
+| `OCI_FINGERPRINT` | Fingerprint de la clave API pública | Producción | Sí (en prod) |
+| `OCI_TENANCY` | OCID del tenancy en OCI | Producción | Sí (en prod) |
+| `OCI_PRIVATE_KEY_BASE64` | Clave privada `.pem` codificada en base64 | Producción | Sí (en prod) |
+
+#### Buckets de Almacenamiento
+
+| Variable | Descripción | Valor por Defecto |
+|----------|-------------|-------------------|
+| `BUCKET_RECIBIDOS` | Bucket para documentos recién subidos | `mediflow-recibidos` |
+| `BUCKET_PROCESADOS` | Bucket para documentos aprobados y clasificados | `mediflow-procesados` |
+| `BUCKET_AUDITORIA` | Bucket para documentos con baja confianza o auditoría humana | `mediflow-auditoria` |
+
+#### Guía Rápida de Configuración (`.env`)
+
+1. **Claves de IA**: Obtén tu API Key de Gemini en [Google AI Studio](https://aistudio.google.com/app/apikey) y la de Groq en [Groq Console](https://console.groq.com/keys).
+2. **Modo OCI Local vs. Producción**:
+   - **Local**: Requiere OCI CLI configurado con `~/.oci/config` y archivo de clave privada `.pem`.
+   - **Producción (Render / Railway / Docker)**: Utiliza credenciales directas por variable de entorno y la clave privada codificada en Base64 (`OCI_PRIVATE_KEY_BASE64`).
+3. **Validaciones en Producción**: El backend rechaza el secret de JWT por defecto, exige longitud mínima de 32 caracteres y prohíbe el uso de `ALLOWED_ORIGINS=*`.
 
 ### Instalación y Ejecución
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate    # Linux/Mac
+
+# Activación del entorno virtual:
+source venv/bin/activate              # Linux / macOS
+.\venv\Scripts\Activate.ps1           # Windows (PowerShell)
+.\venv\Scripts\activate.bat           # Windows (CMD)
+
 pip install -r requirements.txt
-cp .env.example .env        # Configurar las variables
+cp .env.example .env                  # Configurar las variables de entorno
 uvicorn src.main:app --reload
 ```
 
 El servidor estará disponible en `http://localhost:8000` y la documentación Swagger en `http://localhost:8000/docs`.
 
+> [!NOTA]
+> **Parámetro `--port`**: Por defecto, Uvicorn escucha en el puerto `8000`. Si el puerto está ocupado o deseas cambiarlo, agrega `--port`:
+> ```bash
+> uvicorn src.main:app --reload --port 8001
+> ```
+
 ### Estructura de Carpetas
 
 ```text
 backend/
-├── src/
-│   ├── core/           # Configuración, base de datos, rate limiting, excepciones
-│   ├── models/         # Modelos SQLAlchemy (Usuario, TokenRevocado, RegistroTriaje)
-│   ├── repository/     # Patrón Repository para acceso a datos
-│   ├── routers/        # Endpoints de la API (auth, triaje, storage)
-│   ├── schemas/        # Schemas Pydantic de request/response
-│   ├── security/       # JWT, hashing, middleware de autenticación
-│   ├── services/       # Lógica de negocio, agente LangGraph, cliente OCI
-│   └── main.py         # Punto de entrada de la aplicación
-├── requirements.txt
-└── .env.example
+├── .env.example                      # Plantilla de variables de entorno
+├── requirements.txt                  # Dependencias del proyecto
+├── Procfile                          # Configuración de despliegue
+├── seed_admin.py                     # Script para inicializar usuario administrador
+├── test_oci_connection.py            # Verificación de conexión con OCI Object Storage
+└── src/
+    ├── main.py                       # Punto de entrada de FastAPI y middlewares
+    ├── assets/                       # Diagramas y recursos estáticos
+    │   └── grafo_flujo.png
+    ├── core/                         # Configuración central, BD, excepciones y prompts
+    │   ├── config.py
+    │   ├── database.py
+    │   ├── exceptions.py
+    │   ├── prompts.py
+    │   └── rate_limit.py
+    ├── models/                       # Modelos ORM de SQLAlchemy
+    │   ├── registro_triaje.py
+    │   ├── token_revocado.py
+    │   └── usuario.py
+    ├── repository/                   # Acceso a datos (Patrón Repository)
+    │   ├── registro_triaje_repository.py
+    │   ├── token_revocado_repository.py
+    │   └── user_repository.py
+    ├── routers/                      # Endpoints REST (FastAPI Routers)
+    │   ├── auth.py
+    │   ├── storage.py
+    │   └── triaje.py
+    ├── schemas/                      # DTOs y validaciones con Pydantic
+    │   ├── agent_schemas.py
+    │   └── documento.py
+    ├── security/                     # Seguridad, JWT, hashing y control de acceso
+    │   ├── auth.py
+    │   ├── middleware.py
+    │   ├── password.py
+    │   └── schemas.py
+    └── services/                     # Lógica de negocio, LangGraph y OCI
+        ├── agent.py
+        ├── auth_service.py
+        ├── graph.py
+        └── oci_storage.py
 ```
 
