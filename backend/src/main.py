@@ -39,6 +39,11 @@ settings = get_settings()
 app = FastAPI(
     title="MediFlow API",
     version="0.1.0",
+    description=(
+        "API de triaje clinico inteligente. Clasifica, extrae datos y enruta "
+        "documentos medicos hacia los destinos correspondientes, con almacenamiento "
+        "seguro en OCI Object Storage."
+    ),
     lifespan=lifespan,
     docs_url=None if settings.es_produccion else "/docs",
     redoc_url=None if settings.es_produccion else "/redoc",
