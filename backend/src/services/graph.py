@@ -3,6 +3,8 @@ import os
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.state import CompiledStateGraph
 
+from src.repository.registro_triaje_repository import RegistroTriajeRepository
+
 from src.schemas.documento import SolicitudTriaje, RespuestaTriaje
 from src.schemas.agent_schemas import StatusTriaje
 from src.services.agent import (
@@ -44,6 +46,8 @@ def get_graph() -> CompiledStateGraph:
 async def procesar_solicitud_triaje(
     solicitud: SolicitudTriaje,
     es_texto: bool,
+    usuario_id: str,
+    repositorio_triaje: RegistroTriajeRepository,
     archivo_bytes: bytes | None = None,
     nombre_archivo: str | None = None,
 ) -> RespuestaTriaje:
@@ -54,6 +58,8 @@ async def procesar_solicitud_triaje(
         "archivo_bytes": archivo_bytes,
         "nombre_archivo": nombre_archivo,
         "es_texto": es_texto,
+        "usuario_id": usuario_id,
+        "repositorio_triaje": repositorio_triaje,
     })
 
     return RespuestaTriaje(

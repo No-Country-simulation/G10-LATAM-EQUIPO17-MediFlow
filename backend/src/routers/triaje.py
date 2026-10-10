@@ -23,6 +23,9 @@ router = APIRouter(prefix="/triaje", tags=["Triaje Clínico"])
 TIPOS_ARCHIVO_PERMITIDOS = ["application/pdf", "image/png", "image/jpeg", "image/jpg"]
 MAX_ARCHIVO_BYTES = 10 * 1024 * 1024
 
+def get_registro_triaje_repository(db: AsyncSession = Depends(get_db)) -> RegistroTriajeRepository:
+    return RegistroTriajeRepository(db)
+
 
 @router.get(
     "/registros",
@@ -42,12 +45,11 @@ MAX_ARCHIVO_BYTES = 10 * 1024 * 1024
 async def listar_registros_triaje(
     request: Request,
     usuario: TokenPayload = Depends(obtener_usuario_actual),
-    db: AsyncSession = Depends(get_db),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository)
 ):
-    repo = RegistroTriajeRepository(db)
     if usuario.rol == Rol.ADMIN:
-        return await repo.find_all()
-    return await repo.find_by_usuario(usuario.sub)
+        return await repositorio_triaje.find_all()
+    return await repositorio_triaje.find_by_usuario(usuario.sub)
 
 
 @router.post("/", response_model=RespuestaTriaje)
@@ -56,6 +58,7 @@ async def procesar_triaje(
     request: Request,
     solicitud: SolicitudTriaje,
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
 ):
     if not solicitud.documento_texto:
         raise HTTPException(status_code=400, detail="documento_texto es requerido para triaje de texto")
@@ -64,19 +67,8 @@ async def procesar_triaje(
         return await procesar_solicitud_triaje(
             solicitud=solicitud,
             es_texto=True,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error en triaje texto %s: %s", solicitud.documento_id, str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail="Error interno procesando el triaje")
-    if not solicitud.documento_texto:
-        raise HTTPException(status_code=400, detail="documento_texto es requerido para triaje de texto")
-
-    try:
-        return await procesar_solicitud_triaje(
-            solicitud=solicitud,
-            es_texto=True,
+            usuario_id=usuario.sub,
+            repositorio_triaje=repositorio_triaje,
         )
     except HTTPException:
         raise
@@ -93,6 +85,7 @@ async def procesar_triaje_archivo(
     documento_id: str = Form(...),
     canal_origen: str = Form(default="manual"),
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository)
 ):
     if archivo.content_type not in TIPOS_ARCHIVO_PERMITIDOS:
         raise HTTPException(
@@ -128,43 +121,13 @@ async def procesar_triaje_archivo(
             es_texto=False,
             archivo_bytes=contenido,
             nombre_archivo=archivo.filename,
+            usuario_id=usuario.sub,
+            repositorio_triaje=repositorio_triaje,
         )
     except HTTPException:
         raise
     except Exception as e:
         logger.error("Error en triaje archivo %s: %s", documento_id, str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno procesando el archivo")
-    ext = archivo.filename.rsplit(".", 1)[-1].lower() if archivo.filename and "." in archivo.filename else None
-    if not ext or ext not in {"pdf", "png", "jpg", "jpeg"}:
-        raise HTTPException(status_code=400, detail="Extension de archivo no valida")
 
-    chunks = []
-    total = 0
-    while chunk := await archivo.read(65536):
-        total += len(chunk)
-        if total > MAX_ARCHIVO_BYTES:
-            raise HTTPException(
-                status_code=413,
-                detail=f"Archivo excede el limite de {MAX_ARCHIVO_BYTES // (1024 * 1024)} MB",
-            )
-        chunks.append(chunk)
-    contenido = b"".join(chunks)
-
-    solicitud = SolicitudTriaje(
-        documento_id=documento_id,
-        tipo_archivo=ext,
-        canal_origen=canal_origen,
-    )
-
-    try:
-        return await procesar_solicitud_triaje(
-            solicitud=solicitud,
-            es_texto=False,
-            archivo_bytes=contenido,
-            nombre_archivo=archivo.filename,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Error en triaje archivo %s: %s", documento_id, str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail="Error interno procesando el archivo")
+   
