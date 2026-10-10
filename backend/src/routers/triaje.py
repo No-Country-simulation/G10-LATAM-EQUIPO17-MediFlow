@@ -1,7 +1,5 @@
 import logging
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,9 +9,6 @@ from src.repository.registro_triaje_repository import RegistroTriajeRepository
 from src.schemas.documento import SolicitudTriaje, RespuestaTriaje, RegistroTriajeResponse
 from src.security import obtener_usuario_actual, requiere_rol, Rol
 from src.security.schemas import TokenPayload
-from src.services.graph import procesar_solicitud_triaje
-
-logger = logging.getLogger("mediflow.triaje")
 from src.services.graph import procesar_solicitud_triaje
 
 logger = logging.getLogger("mediflow.triaje")
