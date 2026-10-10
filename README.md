@@ -229,7 +229,7 @@ La documentación interactiva (Swagger UI) está disponible en `/docs` cuando el
 | `GET` | `/triaje/registros` | Consultar registros de triaje del usuario | Autenticado |
 | `GET` | `/storage/health` | Verificar conexión con OCI | Admin |
 | `GET` | `/storage/documentos` | Listar documentos por estado | Médico, Admin |
-| `GET` | `/storage/documentos/{bucket}/{ruta}` | Obtener metadata de un documento | Médico, Admin |
+| `GET` | `/storage/documentos/{bucket}/{ruta}` | Obtener metadata de un documento | Paciente, Médico, Admin |
 
 ### Seguridad
 

@@ -86,7 +86,7 @@ async def listar_documentos(
         200: {"description": "Metadata del documento"},
         400: {"description": "Bucket no permitido o ruta invalida"},
         401: {"description": "Token invalido o expirado"},
-        403: {"description": "Acceso denegado — requiere MEDICO o ADMIN"},
+        403: {"description": "Acceso denegado — requiere PACIENTE, MEDICO o ADMIN"},
         404: {"description": "Documento no encontrado en OCI"},
         429: {"description": "Limite de solicitudes excedido (30/min)"},
     },
@@ -95,7 +95,7 @@ async def listar_documentos(
 async def obtener_documento(
     request: Request,
     bucket: str, ruta_objeto: str,
-    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
+    usuario: TokenPayload = Depends(requiere_rol(Rol.PACIENTE, Rol.MEDICO, Rol.ADMIN)),
     settings: Settings = Depends(get_settings),
     storage: MediFlowStorage = Depends(get_storage),
 ):
