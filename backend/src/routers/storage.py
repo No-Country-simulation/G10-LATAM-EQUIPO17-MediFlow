@@ -15,7 +15,21 @@ def get_storage(settings: Settings = Depends(get_settings)) -> MediFlowStorage:
     return MediFlowStorage(settings)
 
 
-@router.get("/health")
+@router.get(
+    "/health",
+    summary="Verificar conexion con OCI",
+    description=(
+        "Valida la conectividad con los tres buckets de OCI "
+        "(recibidos, procesados, auditoria). Solo accesible para ADMIN."
+    ),
+    responses={
+        200: {"description": "Conexion exitosa con todos los buckets"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — solo ADMIN"},
+        429: {"description": "Limite de solicitudes excedido (10/min)"},
+        503: {"description": "OCI no disponible o buckets no encontrados"},
+    },
+)
 @limiter.limit("10/minute")
 async def health_check(
     request: Request,
@@ -31,13 +45,27 @@ async def health_check(
         raise HTTPException(status_code=503, detail={"mensaje": e.mensaje, "codigo": e.codigo})
 
 
-@router.get("/documentos")
+@router.get(
+    "/documentos",
+    summary="Listar documentos por estado",
+    description=(
+        "Retorna los documentos almacenados en OCI filtrados por estado "
+        "(recibido, procesado, auditoria_humana). Soporta filtro por prefijo y paginacion."
+    ),
+    responses={
+        200: {"description": "Lista de documentos"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — requiere MEDICO o ADMIN"},
+        404: {"description": "Bucket no encontrado en OCI"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
 @limiter.limit("30/minute")
 async def listar_documentos(
     request: Request,
-    estado: EstadoDocumento = Query(...),
-    prefijo: str | None = Query(default=None),
-    limite: int = Query(default=50, ge=1, le=500),
+    estado: EstadoDocumento = Query(..., description="Estado del documento en el flujo de triaje"),
+    prefijo: str | None = Query(default=None, description="Prefijo de ruta para filtrar objetos"),
+    limite: int = Query(default=50, ge=1, le=500, description="Cantidad maxima de resultados"),
     usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
     storage: MediFlowStorage = Depends(get_storage),
 ):
@@ -47,7 +75,22 @@ async def listar_documentos(
         raise HTTPException(status_code=404, detail=e.mensaje)
 
 
-@router.get("/documentos/{bucket}/{ruta_objeto:path}")
+@router.get(
+    "/documentos/{bucket}/{ruta_objeto:path}",
+    summary="Obtener metadata de un documento",
+    description=(
+        "Retorna la metadata OCI de un documento especifico, identificado por bucket y ruta. "
+        "Valida que el bucket pertenezca al sistema y que la ruta no contenga path traversal."
+    ),
+    responses={
+        200: {"description": "Metadata del documento"},
+        400: {"description": "Bucket no permitido o ruta invalida"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — requiere MEDICO o ADMIN"},
+        404: {"description": "Documento no encontrado en OCI"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
 @limiter.limit("30/minute")
 async def obtener_documento(
     request: Request,

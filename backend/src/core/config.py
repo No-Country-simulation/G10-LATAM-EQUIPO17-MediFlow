@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     def validar_produccion(self):
         if self.es_produccion and self.jwt_secret_key == "mediflow-dev-secret-cambiar-en-prod":
             raise RuntimeError("JWT_SECRET_KEY no puede usar el valor por defecto en produccion")
+        if self.es_produccion and len(self.jwt_secret_key) < 32:
+            raise RuntimeError("JWT_SECRET_KEY debe tener al menos 32 caracteres en produccion")
+        if self.es_produccion and self.allowed_origins.strip() == "*":
+            raise RuntimeError("ALLOWED_ORIGINS no puede ser '*' en produccion")
 
     def obtener_oci_config(self) -> dict:
         global _oci_key_path
