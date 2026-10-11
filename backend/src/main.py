@@ -8,12 +8,38 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import delete
 
+from sqlalchemy import select
+
 from src.core.config import get_settings
 from src.core.database import crear_tablas, async_session
 from src.core.rate_limit import limiter
 from src.middleware.audit import AuditMiddleware
 from src.models import Usuario, TokenRevocado
 from src.routers import triaje_router, storage_router, auth_router
+from src.security.password import hashear_password
+from src.security.schemas import Rol
+
+
+async def crear_admin_inicial():
+    if not all([settings.admin_email, settings.admin_password, settings.admin_nombre]):
+        return
+
+    async with async_session() as session:
+        resultado = await session.execute(
+            select(Usuario).where(Usuario.email == settings.admin_email)
+        )
+        if resultado.scalar_one_or_none():
+            return
+
+        admin = Usuario(
+            nombre=settings.admin_nombre,
+            email=settings.admin_email,
+            password_hash=hashear_password(settings.admin_password),
+            rol=Rol.ADMIN,
+        )
+        session.add(admin)
+        await session.commit()
+        logging.getLogger("mediflow").info("Admin inicial creado: %s", settings.admin_email)
 
 
 async def purgar_tokens_expirados():
@@ -32,6 +58,7 @@ async def lifespan(app: FastAPI):
     eliminados = await purgar_tokens_expirados()
     if eliminados:
         logging.getLogger("mediflow").info("Tokens expirados purgados: %d", eliminados)
+    await crear_admin_inicial()
     yield
 
 

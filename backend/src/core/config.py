@@ -55,6 +55,11 @@ class Settings(BaseSettings):
     # CORS
     allowed_origins: str = "*"
 
+    # Admin inicial (opcional, para demo/desarrollo)
+    admin_email: str = ""
+    admin_nombre: str = ""
+    admin_password: str = ""
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",
