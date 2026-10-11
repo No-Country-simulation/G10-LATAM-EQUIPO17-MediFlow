@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -10,6 +11,7 @@ from sqlalchemy import delete
 from src.core.config import get_settings
 from src.core.database import crear_tablas, async_session
 from src.core.rate_limit import limiter
+from src.middleware.audit import AuditMiddleware
 from src.models import Usuario, TokenRevocado
 from src.routers import triaje_router, storage_router, auth_router
 
@@ -29,7 +31,6 @@ async def lifespan(app: FastAPI):
     await crear_tablas()
     eliminados = await purgar_tokens_expirados()
     if eliminados:
-        import logging
         logging.getLogger("mediflow").info("Tokens expirados purgados: %d", eliminados)
     yield
 
@@ -50,6 +51,14 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
+
+logging_cfg = logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+app.add_middleware(AuditMiddleware)
 
 
 @app.middleware("http")
