@@ -73,7 +73,7 @@ function AdminDashboardPage() {
         <div>
           <span className="admin-dashboard__eyebrow">MediFlow</span>
           <h1>Administración del sistema</h1>
-          <p>Gestiona el acceso de los usuarios y el almacenamiento documental de la plataforma.</p>
+          <p>Supervisa usuarios, almacenamiento documental y actividad clínica de la plataforma.</p>
         </div>
         <button
           type="button"
@@ -100,7 +100,7 @@ function AdminDashboardPage() {
       <section className="admin-summary" aria-labelledby="summary-title">
         <div className="admin-section__header">
           <div>
-            <span className="admin-section__eyebrow">Estado actual</span>
+            <span className="admin-section__eyebrow">Visión general</span>
             <h2 id="summary-title">Resumen</h2>
           </div>
         </div>
@@ -112,9 +112,9 @@ function AdminDashboardPage() {
             <small>{usersError || `${activeUsers} activas`}</small>
           </div>
           <div className="admin-summary__item">
-            <span>Accesos</span>
+            <span>Cuentas inactivas</span>
             <strong>{usersError ? 'No disponible' : inactiveUsers}</strong>
-            <small>{usersError || (inactiveUsers === 1 ? 'cuenta inactiva' : 'cuentas inactivas')}</small>
+            <small>{usersError || `de ${usuarios.length} usuarios`}</small>
           </div>
           <div className="admin-summary__item">
             <span>Almacenamiento</span>
@@ -122,7 +122,7 @@ function AdminDashboardPage() {
             <small>{storageError || storage?.mensaje || 'Object Storage'}</small>
           </div>
           <div className="admin-summary__item">
-            <span>Triaje</span>
+            <span>Registros de triaje</span>
             <strong>{triajeError ? 'Revisar' : registros.length}</strong>
             <small>{triajeError || 'registros disponibles'}</small>
           </div>
@@ -132,7 +132,7 @@ function AdminDashboardPage() {
       <section className="admin-modules" aria-labelledby="modules-title">
         <div className="admin-section__header">
           <div>
-            <span className="admin-section__eyebrow">Accesos directos</span>
+            <span className="admin-section__eyebrow">Gestión</span>
             <h2 id="modules-title">Módulos</h2>
           </div>
         </div>
