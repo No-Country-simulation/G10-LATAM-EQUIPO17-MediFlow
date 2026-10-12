@@ -90,6 +90,11 @@
 .admin-section__link:hover { color: var(--admin-ink); }
 
 .attention-list { display: grid; gap: 8px; }
+.attention-empty { display: flex; align-items: center; gap: 12px; min-height: 62px; padding: 11px 13px; background: #fff; }
+.attention-empty__mark { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border-radius: 50%; color: #fff; background: #4fa984; font-size: 0.75rem; font-weight: 800; }
+.attention-empty span:last-child { display: flex; flex-direction: column; gap: 3px; }
+.attention-empty strong { color: var(--admin-ink); font-size: 0.78rem; }
+.attention-empty small { color: var(--admin-muted); font-size: 0.68rem; }
 .attention-row { display: flex; align-items: center; gap: 12px; min-height: 62px; padding: 11px 13px; border: 1px solid transparent; background: #fff; transition: border-color 160ms ease, transform 160ms ease; }
 .attention-row:hover { border-color: var(--admin-accent); transform: translateX(2px); }
 .attention-row__status { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #4fa984; }

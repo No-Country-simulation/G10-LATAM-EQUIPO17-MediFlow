@@ -77,10 +77,7 @@ function AdminDashboardPage() {
   const recentRecords = [...registros]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 5)
-  const pendingItems = [
-    usersError || inactiveUsers > 0,
-    storageError || !storageConnected,
-  ].filter(Boolean).length
+  const pendingItems = usersError || inactiveUsers > 0 ? 1 : 0
 
   return (
     <div className="admin-dashboard">
@@ -105,7 +102,7 @@ function AdminDashboardPage() {
           <div>
             <span className="admin-section__number">01</span>
             <div>
-              <span className="admin-section__eyebrow">Decisiones pendientes</span>
+              <span className="admin-section__eyebrow">Acciones pendientes</span>
               <h2 id="attention-title">Requiere atención</h2>
             </div>
           </div>
@@ -115,23 +112,25 @@ function AdminDashboardPage() {
         </div>
 
         <div className="attention-list">
-          <Link className="attention-row" to="/users">
-            <span className={`attention-row__status ${usersError ? 'is-error' : inactiveUsers > 0 ? 'is-warning' : 'is-ok'}`} aria-hidden="true" />
-            <span className="attention-row__content">
-              <strong>{usersError ? 'Usuarios no disponibles' : inactiveUsers > 0 ? `${inactiveUsers} usuarios requieren revisión` : 'No hay accesos pendientes'}</strong>
-              <span>{usersError || 'Revisa estados de acceso y roles'}</span>
-            </span>
-            <span className="attention-row__action">Ir a Usuarios <span aria-hidden="true">→</span></span>
-          </Link>
-
-          <Link className="attention-row" to="/storage">
-            <span className={`attention-row__status ${storageError || !storageConnected ? 'is-error' : 'is-ok'}`} aria-hidden="true" />
-            <span className="attention-row__content">
-              <strong>{storageConnected ? 'Storage operativo' : 'Storage requiere revisión'}</strong>
-              <span>{storageError || storage?.mensaje || 'Comprueba la conexión con OCI'}</span>
-            </span>
-            <span className="attention-row__action">Ir a Storage <span aria-hidden="true">→</span></span>
-          </Link>
+          {pendingItems === 0 && (
+            <div className="attention-empty">
+              <span className="attention-empty__mark" aria-hidden="true">✓</span>
+              <span>
+                <strong>No hay acciones pendientes</strong>
+                <small>Los accesos de usuarios están al día.</small>
+              </span>
+            </div>
+          )}
+          {pendingItems > 0 && (
+            <Link className="attention-row" to="/users">
+              <span className={`attention-row__status ${usersError ? 'is-error' : 'is-warning'}`} aria-hidden="true" />
+              <span className="attention-row__content">
+                <strong>{usersError ? 'Usuarios no disponibles' : `${inactiveUsers} usuarios requieren revisión`}</strong>
+                <span>{usersError || 'Revisa estados de acceso y roles'}</span>
+              </span>
+              <span className="attention-row__action">Ir a Usuarios <span aria-hidden="true">→</span></span>
+            </Link>
+          )}
         </div>
       </section>
 
