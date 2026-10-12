@@ -92,7 +92,7 @@
 .admin-section__header { margin-bottom: 18px; }
 .admin-section__header h2 { margin: 7px 0 0; color: var(--admin-ink); font-family: var(--font-display); font-size: 1.3rem; letter-spacing: -0.035em; }
 .admin-summary { margin-bottom: 38px; }
-.admin-summary__grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--admin-line); border-bottom: 1px solid var(--admin-line); }
+.admin-summary__grid { display: grid !important; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--admin-line); background: rgba(255, 255, 255, 0.55); }
 .admin-summary__item { display: flex; min-height: 112px; flex-direction: column; gap: 7px; padding: 16px 18px; border-right: 1px solid var(--admin-line); }
 .admin-summary__item:first-child { padding-left: 0; }
 .admin-summary__item:last-child { border-right: 0; }
