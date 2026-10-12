@@ -11,13 +11,6 @@ const ROLE_LABELS = {
   paciente: 'Pacientes',
 }
 
-const PIPELINE_STAGES = [
-  { label: 'Recibidos', detail: 'Pendientes de clasificación' },
-  { label: 'Procesando', detail: 'En análisis por el agente' },
-  { label: 'Auditoría humana', detail: 'Casos de baja confianza' },
-  { label: 'Completados', detail: 'Registros persistidos' },
-]
-
 function AdminDashboardPage() {
   const [usuarios, setUsuarios] = useState([])
   const [registros, setRegistros] = useState([])
@@ -82,6 +75,8 @@ function AdminDashboardPage() {
   const usuariosRecientes = [...usuarios]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 4)
+  const bucketsTriaje = new Set(registros.map((registro) => registro.bucket)).size
+  const ultimoTriaje = registrosRecientes[0]?.created_at
 
   return (
     <div className="admin-ops">
@@ -119,14 +114,22 @@ function AdminDashboardPage() {
                 <span className="ops-panel__eyebrow">Prioridades</span>
                 <h2>Requiere atención</h2>
               </div>
-              <span className="ops-panel__count">{inactivos} pendientes</span>
+              <span className="ops-panel__count">
+                {usersError ? 'No disponible' : `${inactivos} pendientes`}
+              </span>
             </div>
 
             <div className="attention-grid">
               <Link className="attention-item" to="/users">
-                <span className="attention-item__marker is-warning" aria-hidden="true" />
+                <span className={`attention-item__marker ${usersError ? 'is-danger' : inactivos > 0 ? 'is-warning' : 'is-ok'}`} aria-hidden="true" />
                 <span className="attention-item__copy">
-                  <strong>{inactivos} usuarios inactivos</strong>
+                  <strong>
+                    {usersError
+                      ? 'Usuarios no disponibles'
+                      : inactivos > 0
+                        ? `${inactivos} usuarios requieren revisión`
+                        : 'No hay accesos pendientes'}
+                  </strong>
                   <span>{usersError || 'Revisa estados de acceso y roles'}</span>
                 </span>
                 <span className="attention-item__arrow" aria-hidden="true">→</span>
@@ -141,14 +144,6 @@ function AdminDashboardPage() {
                 <span className="attention-item__arrow" aria-hidden="true">→</span>
               </Link>
 
-              <Link className="attention-item" to="/agent">
-                <span className={`attention-item__marker ${triajeError ? 'is-danger' : 'is-neutral'}`} aria-hidden="true" />
-                <span className="attention-item__copy">
-                  <strong>{registros.length} registros de triaje</strong>
-                  <span>{triajeError || 'Consulta la actividad clínica procesada'}</span>
-                </span>
-                <span className="attention-item__arrow" aria-hidden="true">→</span>
-              </Link>
             </div>
           </section>
 
@@ -156,27 +151,29 @@ function AdminDashboardPage() {
             <div className="ops-panel__heading">
               <div>
                 <span className="ops-panel__eyebrow">Trazabilidad clínica</span>
-                <h2>Flujo de documentos</h2>
+                <h2>Resumen de triaje</h2>
               </div>
-              <Link className="ops-panel__link" to="/documents">Ver documentos</Link>
+              <Link className="ops-panel__link" to="/agent">Abrir agente</Link>
             </div>
 
-            <div className="pipeline" aria-label="Etapas del flujo de documentos">
-              {PIPELINE_STAGES.map((stage, index) => (
-                <div className="pipeline__stage" key={stage.label}>
-                  <div className="pipeline__stage-topline">
-                    <span className="pipeline__index">0{index + 1}</span>
-                    <span className="pipeline__state">
-                      {index === PIPELINE_STAGES.length - 1
-                        ? `${registros.length} registrados`
-                        : 'Sin métrica conectada'}
-                    </span>
-                  </div>
-                  <strong>{stage.label}</strong>
-                  <span>{stage.detail}</span>
-                </div>
-              ))}
+            <div className="triage-summary" aria-label="Métricas de triaje">
+              <div>
+                <strong>{triajeError ? '—' : registros.length}</strong>
+                <span>registros persistidos</span>
+              </div>
+              <div>
+                <strong>{triajeError ? '—' : bucketsTriaje}</strong>
+                <span>buckets utilizados</span>
+              </div>
+              <div>
+                <strong>{triajeError ? '—' : ultimoTriaje ? new Date(ultimoTriaje).toLocaleDateString() : '—'}</strong>
+                <span>último registro</span>
+              </div>
             </div>
+            {triajeError && <p className="ops-state is-error" role="alert">{triajeError}</p>}
+            {!triajeError && registros.length === 0 && (
+              <p className="ops-state">No hay registros persistidos para resumir.</p>
+            )}
           </section>
 
           <section className="ops-panel">
@@ -256,7 +253,7 @@ function AdminDashboardPage() {
               <div className="user-summary__roles">
                 {Object.entries(ROLE_LABELS).map(([rol, etiqueta]) => (
                   <span key={rol}>
-                    <strong>{usuarios.filter((usuario) => usuario.rol === rol).length}</strong> {etiqueta}
+                    <strong>{usersError ? '—' : usuarios.filter((usuario) => usuario.rol === rol).length}</strong> {etiqueta}
                   </span>
                 ))}
               </div>
@@ -275,7 +272,10 @@ function AdminDashboardPage() {
                   </span>
                 </div>
               ))}
-              {!cargando && usuariosRecientes.length === 0 && (
+              {!cargando && usersError && (
+                <p className="ops-empty is-error">No se puede mostrar la lista hasta recuperar el servicio.</p>
+              )}
+              {!cargando && !usersError && usuariosRecientes.length === 0 && (
                 <p className="ops-empty">No hay usuarios para mostrar.</p>
               )}
             </div>
@@ -284,7 +284,7 @@ function AdminDashboardPage() {
       </section>
 
       <footer className="admin-ops__footer">
-        <span>{activos} cuentas activas en el espacio de trabajo</span>
+        <span>{usersError ? 'Datos de usuarios no disponibles' : `${activos} cuentas activas en el espacio de trabajo`}</span>
         <Link to="/users">Revisar permisos y roles →</Link>
       </footer>
     </div>

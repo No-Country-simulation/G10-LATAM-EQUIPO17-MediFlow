@@ -153,20 +153,10 @@
 .attention-item__copy span { overflow: hidden; color: var(--ops-muted); font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
 .attention-item__arrow { color: var(--color-mf-sky-mid); font-size: 1.1rem; }
 
-.pipeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-
-.pipeline__stage {
-  min-height: 126px;
-  padding: 13px;
-  border-left: 2px solid var(--color-mf-sky);
-  background: var(--color-mf-bg-2);
-}
-
-.pipeline__stage-topline { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 22px; }
-.pipeline__index { color: var(--color-mf-sky-mid); font-size: 0.68rem; font-weight: 800; }
-.pipeline__state { color: var(--ops-muted); font-size: 0.58rem; text-align: right; }
-.pipeline__stage strong { display: block; margin-bottom: 6px; color: var(--color-mf-dark-2); font-size: 0.78rem; }
-.pipeline__stage > span:last-child { color: var(--ops-muted); font-size: 0.68rem; line-height: 1.4; }
+.triage-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.triage-summary > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 13px; background: var(--color-mf-bg-2); }
+.triage-summary strong { overflow: hidden; color: var(--color-mf-dark); font-family: var(--font-display); font-size: 1.15rem; letter-spacing: -0.04em; text-overflow: ellipsis; white-space: nowrap; }
+.triage-summary span { color: var(--ops-muted); font-size: 0.65rem; line-height: 1.35; }
 
 .system-status { display: grid; gap: 0; margin-bottom: 16px; }
 .system-status__row { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--color-mf-bg-4); }
@@ -196,6 +186,7 @@
 .recent-user__status.is-ok { color: #398866; }
 .recent-user__status.is-danger { color: #af4b4b; }
 .ops-empty { margin-bottom: 0; color: var(--ops-muted); font-size: 0.76rem; }
+.ops-empty.is-error { color: #af4b4b; }
 
 .ops-state { margin: 0; color: var(--ops-muted); font-size: 0.76rem; line-height: 1.5; }
 .ops-state.is-error { color: #af4b4b; }
@@ -219,6 +210,6 @@
   .admin-ops__refresh { width: 100%; }
   .admin-ops__notice { align-items: flex-start; flex-wrap: wrap; }
   .admin-ops__notice-time { width: 100%; margin-left: 17px; }
-  .pipeline { grid-template-columns: repeat(2, 1fr); }
+  .triage-summary { grid-template-columns: 1fr; }
   .admin-ops__footer { align-items: flex-start; flex-direction: column; }
 }
