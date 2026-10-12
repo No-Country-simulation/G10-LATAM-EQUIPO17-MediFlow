@@ -1,24 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { listarRegistrosTriaje } from '../../agent/services/agentService'
 import { listarUsuarios } from '../../users/services/usersService'
 import { verificarSaludStorage } from '../../storage/services/storageService'
 import './AdminDashboardPage.css'
 
-function formatDate(value) {
-  if (!value) return 'Sin fecha'
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
-
 function AdminDashboardPage() {
   const [usuarios, setUsuarios] = useState([])
-  const [registros, setRegistros] = useState([])
   const [storage, setStorage] = useState(null)
   const [usersError, setUsersError] = useState('')
-  const [triajeError, setTriajeError] = useState('')
   const [storageError, setStorageError] = useState('')
   const [cargando, setCargando] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -28,10 +17,9 @@ function AdminDashboardPage() {
 
     async function cargarDatos() {
       setCargando(true)
-      const [usersResult, storageResult, triajeResult] = await Promise.allSettled([
+      const [usersResult, storageResult] = await Promise.allSettled([
         listarUsuarios(),
         verificarSaludStorage(),
-        listarRegistrosTriaje(),
       ])
 
       if (!activo) return
@@ -52,14 +40,6 @@ function AdminDashboardPage() {
         setStorageError(storageResult.reason?.message || 'No se pudo verificar OCI')
       }
 
-      if (triajeResult.status === 'fulfilled') {
-        setRegistros(triajeResult.value || [])
-        setTriajeError('')
-      } else {
-        setRegistros([])
-        setTriajeError(triajeResult.reason?.message || 'No se pudieron cargar los registros de triaje')
-      }
-
       setCargando(false)
     }
 
@@ -70,22 +50,18 @@ function AdminDashboardPage() {
     }
   }, [refreshKey])
 
-  const usersAvailable = !usersError
   const activeUsers = usuarios.filter((usuario) => usuario.activo).length
   const inactiveUsers = usuarios.length - activeUsers
   const storageConnected = storage?.oci_conectado === true
-  const recentRecords = [...registros]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 5)
-  const pendingItems = usersError || inactiveUsers > 0 ? 1 : 0
+  const hasAlert = !cargando && Boolean(usersError || inactiveUsers > 0 || storageError || !storageConnected)
 
   return (
     <div className="admin-dashboard">
       <header className="admin-dashboard__header">
         <div>
-          <span className="admin-dashboard__eyebrow">Administración</span>
-          <h1>Resumen del espacio</h1>
-          <p>Una lectura rápida de lo que requiere atención y del estado de MediFlow.</p>
+          <span className="admin-dashboard__eyebrow">MediFlow</span>
+          <h1>Administración del sistema</h1>
+          <p>Gestiona el acceso de los usuarios y el almacenamiento documental de la plataforma.</p>
         </div>
         <button
           type="button"
@@ -93,137 +69,62 @@ function AdminDashboardPage() {
           onClick={() => setRefreshKey((value) => value + 1)}
           disabled={cargando}
         >
-          {cargando ? 'Actualizando…' : 'Actualizar'}
+          {cargando ? 'Actualizando…' : 'Actualizar estado'}
         </button>
       </header>
 
-      <section className="admin-section admin-section--attention" aria-labelledby="attention-title">
+      {hasAlert && (
+        <section className="admin-alert" aria-labelledby="alert-title">
+          <span className="admin-alert__mark" aria-hidden="true">!</span>
+          <div>
+            <strong id="alert-title">Hay elementos que requieren revisión</strong>
+            <span>
+              {usersError || storageError || (inactiveUsers > 0 ? `${inactiveUsers} usuarios están inactivos.` : 'Storage no está disponible.')}
+            </span>
+          </div>
+        </section>
+      )}
+
+      <section className="admin-modules" aria-labelledby="modules-title">
         <div className="admin-section__header">
           <div>
-            <span className="admin-section__number">01</span>
-            <div>
-              <span className="admin-section__eyebrow">Acciones pendientes</span>
-              <h2 id="attention-title">Requiere atención</h2>
-            </div>
+            <span className="admin-section__eyebrow">Módulos administrativos</span>
+            <h2 id="modules-title">Administración del sistema</h2>
           </div>
-          <span className="admin-section__summary">
-            {pendingItems === 0 ? 'Todo en orden' : `${pendingItems} pendiente${pendingItems === 1 ? '' : 's'}`}
-          </span>
         </div>
 
-        <div className="attention-list">
-          {pendingItems === 0 && (
-            <div className="attention-empty">
-              <span className="attention-empty__mark" aria-hidden="true">✓</span>
-              <span>
-                <strong>No hay acciones pendientes</strong>
-                <small>Los accesos de usuarios están al día.</small>
-              </span>
-            </div>
-          )}
-          {pendingItems > 0 && (
-            <Link className="attention-row" to="/users">
-              <span className={`attention-row__status ${usersError ? 'is-error' : 'is-warning'}`} aria-hidden="true" />
-              <span className="attention-row__content">
-                <strong>{usersError ? 'Usuarios no disponibles' : `${inactiveUsers} usuarios requieren revisión`}</strong>
-                <span>{usersError || 'Revisa estados de acceso y roles'}</span>
-              </span>
-              <span className="attention-row__action">Ir a Usuarios <span aria-hidden="true">→</span></span>
-            </Link>
-          )}
-        </div>
-      </section>
-
-      <section className="admin-section" aria-labelledby="status-title">
-        <div className="admin-section__header">
-          <div>
-            <span className="admin-section__number">02</span>
-            <div>
-              <span className="admin-section__eyebrow">Lectura del sistema</span>
-              <h2 id="status-title">Estado del espacio</h2>
-            </div>
-          </div>
-          <span className="admin-section__helper">Datos consultados desde el backend</span>
-        </div>
-
-        <div className="status-grid">
-          <Link className="status-card" to="/users">
-            <span className="status-card__topline">
-              <span className="status-card__label">Usuarios</span>
-              <span className={`status-card__dot ${usersError ? 'is-error' : 'is-ok'}`} aria-hidden="true" />
+        <div className="admin-module-list">
+          <Link className="admin-module" to="/users">
+            <span className="admin-module__index">01</span>
+            <span className="admin-module__body">
+              <strong>Usuarios y permisos</strong>
+              <span>Gestiona cuentas, roles y estados de acceso.</span>
+              <small>{usersError ? 'Información no disponible' : `${usuarios.length} cuentas · ${activeUsers} activas`}</small>
             </span>
-            <strong>{usersAvailable ? 'Disponible' : 'Revisar'}</strong>
-            <span>{usersAvailable ? `${usuarios.length} cuentas · ${activeUsers} activas` : usersError}</span>
-            <span className="status-card__link">Gestionar usuarios →</span>
+            <span className={`admin-module__status ${usersError ? 'is-error' : inactiveUsers > 0 ? 'is-warning' : 'is-ok'}`}>
+              {usersError ? 'Revisar' : inactiveUsers > 0 ? `${inactiveUsers} inactivos` : 'Al día'}
+            </span>
+            <span className="admin-module__arrow" aria-hidden="true">↗</span>
           </Link>
 
-          <Link className="status-card" to="/storage">
-            <span className="status-card__topline">
-              <span className="status-card__label">Object Storage</span>
-              <span className={`status-card__dot ${storageConnected ? 'is-ok' : 'is-error'}`} aria-hidden="true" />
+          <Link className="admin-module" to="/storage">
+            <span className="admin-module__index">02</span>
+            <span className="admin-module__body">
+              <strong>Archivos y almacenamiento</strong>
+              <span>Consulta la conexión con OCI y el estado de los buckets.</span>
+              <small>{storageError || storage?.mensaje || 'Object Storage'}</small>
             </span>
-            <strong>{storageConnected ? 'Operativo' : 'Sin conexión'}</strong>
-            <span>{storageError || storage?.mensaje || 'Buckets y conexión OCI'}</span>
-            <span className="status-card__link">Abrir Storage →</span>
-          </Link>
-
-          <Link className="status-card" to="/agent">
-            <span className="status-card__topline">
-              <span className="status-card__label">Actividad de triaje</span>
-              <span className={`status-card__dot ${triajeError ? 'is-error' : 'is-ok'}`} aria-hidden="true" />
+            <span className={`admin-module__status ${storageConnected ? 'is-ok' : 'is-error'}`}>
+              {storageConnected ? 'Operativo' : 'Revisar'}
             </span>
-            <strong>{triajeError ? 'Revisar' : `${registros.length} registros`}</strong>
-            <span>{triajeError || 'Registros persistidos disponibles'}</span>
-            <span className="status-card__link">Abrir agente →</span>
+            <span className="admin-module__arrow" aria-hidden="true">↗</span>
           </Link>
         </div>
-      </section>
-
-      <section className="admin-section" aria-labelledby="activity-title">
-        <div className="admin-section__header">
-          <div>
-            <span className="admin-section__number">03</span>
-            <div>
-              <span className="admin-section__eyebrow">Seguimiento</span>
-              <h2 id="activity-title">Actividad reciente</h2>
-            </div>
-          </div>
-          <Link className="admin-section__link" to="/agent">Ver agente <span aria-hidden="true">↗</span></Link>
-        </div>
-
-        {triajeError && <p className="admin-dashboard__state is-error" role="alert">{triajeError}</p>}
-        {!triajeError && recentRecords.length === 0 && (
-          <p className="admin-dashboard__state">Todavía no hay registros de triaje persistidos.</p>
-        )}
-        {!triajeError && recentRecords.length > 0 && (
-          <div className="activity-table-wrap">
-            <table className="activity-table">
-              <thead>
-                <tr>
-                  <th>Documento</th>
-                  <th>Bucket</th>
-                  <th>Fecha</th>
-                  <th>Usuario</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentRecords.map((registro) => (
-                  <tr key={registro.id}>
-                    <td><strong>{registro.ruta_documento || registro.ruta_triaje || 'Documento clínico'}</strong></td>
-                    <td><span className="activity-table__bucket">{registro.bucket}</span></td>
-                    <td>{formatDate(registro.created_at)}</td>
-                    <td>{registro.id_usuario}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </section>
 
       <footer className="admin-dashboard__footer">
-        <span>{storageConnected ? 'Object Storage conectado' : 'Object Storage pendiente de verificación'}</span>
-        <Link to="/users">Administrar permisos y roles →</Link>
+        <span>Selecciona un módulo para consultar y gestionar su información.</span>
+        <Link to="/agent">Ir al Agente MediFlow <span aria-hidden="true">↗</span></Link>
       </footer>
     </div>
   )
