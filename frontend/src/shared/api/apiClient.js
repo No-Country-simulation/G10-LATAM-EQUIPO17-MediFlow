@@ -1,6 +1,9 @@
+import { clearSession } from '../../app/session'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const TOKENS_KEY = 'mediflow.tokens'
+let refreshPromise = null
 
 export class ApiError extends Error {
   constructor(status, detail) {
@@ -39,7 +42,46 @@ export function getRefreshToken() {
   }
 }
 
-export async function apiClient(ruta, { metodo = 'GET', body, query } = {}) {
+async function renovarTokens() {
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) throw new ApiError(401, 'La sesión expiró')
+
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+      .then(async (response) => {
+        const data = response.headers.get('content-type')?.includes('application/json')
+          ? await response.json()
+          : null
+
+        if (!response.ok) {
+          throw new ApiError(response.status, data?.detail || 'La sesión expiró')
+        }
+
+        setAuthTokens(data)
+        return data
+      })
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+
+  return refreshPromise
+}
+
+function cerrarSesionExpirada() {
+  clearAuthTokens()
+  clearSession()
+  if (window.location.pathname !== '/login') window.location.assign('/login')
+}
+
+export async function apiClient(
+  ruta,
+  { metodo = 'GET', body, query, reintentar = true } = {},
+) {
   const url = new URL(`${API_BASE_URL}${ruta}`)
 
   if (query) {
@@ -77,6 +119,17 @@ export async function apiClient(ruta, { metodo = 'GET', body, query } = {}) {
   const data = contentType.includes('application/json') ? await response.json() : null
 
   if (!response.ok) {
+    const rutasSinRefresh = ['/auth/login', '/auth/registro', '/auth/refresh', '/auth/logout']
+    const puedeRenovar = response.status === 401 && token && reintentar && !rutasSinRefresh.includes(ruta)
+    if (puedeRenovar) {
+      try {
+        await renovarTokens()
+        return apiClient(ruta, { metodo, body, query, reintentar: false })
+      } catch {
+        cerrarSesionExpirada()
+      }
+    }
+
     const detail = data?.detail ?? data?.mensaje ?? 'Solicitud fallida'
     throw new ApiError(response.status, detail)
   }
