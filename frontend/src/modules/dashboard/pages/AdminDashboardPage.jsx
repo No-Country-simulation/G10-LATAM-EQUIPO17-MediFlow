@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { listarRegistrosTriaje } from '../../agent/services/agentService'
 import { listarUsuarios } from '../../users/services/usersService'
 import { verificarSaludStorage } from '../../storage/services/storageService'
 import './AdminDashboardPage.css'
@@ -11,16 +12,18 @@ const ROLE_LABELS = {
 }
 
 const PIPELINE_STAGES = [
-  { label: 'Recibidos', detail: 'Pendientes de clasificación', status: 'Sin métrica conectada' },
-  { label: 'Procesando', detail: 'En análisis por el agente', status: 'Sin métrica conectada' },
-  { label: 'Auditoría humana', detail: 'Casos de baja confianza', status: 'Revisión manual' },
-  { label: 'Completados', detail: 'Listos para consulta', status: 'Sin métrica conectada' },
+  { label: 'Recibidos', detail: 'Pendientes de clasificación' },
+  { label: 'Procesando', detail: 'En análisis por el agente' },
+  { label: 'Auditoría humana', detail: 'Casos de baja confianza' },
+  { label: 'Completados', detail: 'Registros persistidos' },
 ]
 
 function AdminDashboardPage() {
   const [usuarios, setUsuarios] = useState([])
+  const [registros, setRegistros] = useState([])
   const [storage, setStorage] = useState(null)
   const [usersError, setUsersError] = useState('')
+  const [triajeError, setTriajeError] = useState('')
   const [storageError, setStorageError] = useState('')
   const [cargando, setCargando] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -30,9 +33,10 @@ function AdminDashboardPage() {
 
     async function cargarDatos() {
       setCargando(true)
-      const [usersResult, storageResult] = await Promise.allSettled([
+      const [usersResult, storageResult, triajeResult] = await Promise.allSettled([
         listarUsuarios(),
         verificarSaludStorage(),
+        listarRegistrosTriaje(),
       ])
 
       if (!activo) return
@@ -52,6 +56,13 @@ function AdminDashboardPage() {
         setStorageError(storageResult.reason?.message || 'No se pudo verificar OCI')
       }
 
+      if (triajeResult.status === 'fulfilled') {
+        setRegistros(triajeResult.value || [])
+        setTriajeError('')
+      } else {
+        setTriajeError(triajeResult.reason?.message || 'No se pudieron cargar los registros de triaje')
+      }
+
       setCargando(false)
     }
 
@@ -65,6 +76,9 @@ function AdminDashboardPage() {
   const activos = usuarios.filter((usuario) => usuario.activo).length
   const inactivos = usuarios.length - activos
   const storageConectado = storage?.oci_conectado === true
+  const registrosRecientes = [...registros]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 4)
   const usuariosRecientes = [...usuarios]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 4)
@@ -90,7 +104,7 @@ function AdminDashboardPage() {
       <div className="admin-ops__notice" role="status">
         <span className="admin-ops__notice-dot" aria-hidden="true" />
         <span>
-          {usersError || storageError
+          {usersError || storageError || triajeError
             ? 'Hay servicios pendientes de revisión.'
             : 'Los datos de usuarios y storage se consultan desde el backend.'}
         </span>
@@ -127,11 +141,11 @@ function AdminDashboardPage() {
                 <span className="attention-item__arrow" aria-hidden="true">→</span>
               </Link>
 
-              <Link className="attention-item" to="/documents">
-                <span className="attention-item__marker is-neutral" aria-hidden="true" />
+              <Link className="attention-item" to="/agent">
+                <span className={`attention-item__marker ${triajeError ? 'is-danger' : 'is-neutral'}`} aria-hidden="true" />
                 <span className="attention-item__copy">
-                  <strong>Auditoría clínica</strong>
-                  <span>La cola de triaje aún no expone métricas al panel</span>
+                  <strong>{registros.length} registros de triaje</strong>
+                  <span>{triajeError || 'Consulta la actividad clínica procesada'}</span>
                 </span>
                 <span className="attention-item__arrow" aria-hidden="true">→</span>
               </Link>
@@ -152,13 +166,45 @@ function AdminDashboardPage() {
                 <div className="pipeline__stage" key={stage.label}>
                   <div className="pipeline__stage-topline">
                     <span className="pipeline__index">0{index + 1}</span>
-                    <span className="pipeline__state">{stage.status}</span>
+                    <span className="pipeline__state">
+                      {index === PIPELINE_STAGES.length - 1
+                        ? `${registros.length} registrados`
+                        : 'Sin métrica conectada'}
+                    </span>
                   </div>
                   <strong>{stage.label}</strong>
                   <span>{stage.detail}</span>
                 </div>
               ))}
             </div>
+          </section>
+
+          <section className="ops-panel">
+            <div className="ops-panel__heading">
+              <div>
+                <span className="ops-panel__eyebrow">Actividad clínica</span>
+                <h2>Últimos registros de triaje</h2>
+              </div>
+              <Link className="ops-panel__link" to="/agent">Abrir agente</Link>
+            </div>
+
+            {triajeError && <p className="ops-state is-error" role="alert">{triajeError}</p>}
+            {!triajeError && registrosRecientes.length === 0 && (
+              <p className="ops-state">Aún no hay registros de triaje persistidos.</p>
+            )}
+            {!triajeError && registrosRecientes.length > 0 && (
+              <div className="triage-activity">
+                {registrosRecientes.map((registro) => (
+                  <div className="triage-activity__row" key={registro.id}>
+                    <span className="triage-activity__dot" aria-hidden="true" />
+                    <span className="triage-activity__copy">
+                      <strong>{registro.ruta_documento || 'Documento clínico'}</strong>
+                      <span>{registro.bucket} · {new Date(registro.created_at).toLocaleString()}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
 
@@ -183,8 +229,10 @@ function AdminDashboardPage() {
                 </span>
               </div>
               <div className="system-status__row">
-                <span className="system-status__label">Agente de triaje</span>
-                <span className="system-status__value is-neutral">Sin telemetría</span>
+                <span className="system-status__label">Registros de triaje</span>
+                <span className={`system-status__value ${triajeError ? 'is-danger' : 'is-neutral'}`}>
+                  {triajeError ? 'Revisar' : `${registros.length} registrados`}
+                </span>
               </div>
             </div>
 

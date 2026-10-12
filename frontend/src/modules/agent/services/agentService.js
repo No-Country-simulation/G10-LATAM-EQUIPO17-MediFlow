@@ -23,3 +23,7 @@ export function procesarTriajeArchivo(archivo, documentoId, canalOrigen = 'manua
   formData.append('canal_origen', canalOrigen)
   return apiClient('/triaje/archivo', { metodo: 'POST', body: formData })
 }
+
+export function listarRegistrosTriaje() {
+  return apiClient('/triaje/registros')
+}

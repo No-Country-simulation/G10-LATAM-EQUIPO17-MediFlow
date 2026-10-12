@@ -197,6 +197,16 @@
 .recent-user__status.is-danger { color: #af4b4b; }
 .ops-empty { margin-bottom: 0; color: var(--ops-muted); font-size: 0.76rem; }
 
+.ops-state { margin: 0; color: var(--ops-muted); font-size: 0.76rem; line-height: 1.5; }
+.ops-state.is-error { color: #af4b4b; }
+
+.triage-activity { display: grid; gap: 2px; }
+.triage-activity__row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--color-mf-bg-4); }
+.triage-activity__dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: var(--color-mf-sky); }
+.triage-activity__copy { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.triage-activity__copy strong { overflow: hidden; color: var(--color-mf-dark-2); font-size: 0.72rem; text-overflow: ellipsis; white-space: nowrap; }
+.triage-activity__copy span { color: var(--ops-muted); font-size: 0.64rem; }
+
 .admin-ops__footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 18px; color: var(--ops-muted); font-size: 0.7rem; }
 .admin-ops__footer a { color: var(--color-mf-sky-mid); font-weight: 800; }
 
