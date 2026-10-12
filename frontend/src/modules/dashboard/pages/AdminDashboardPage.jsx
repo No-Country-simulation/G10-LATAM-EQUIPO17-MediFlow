@@ -11,6 +11,14 @@ const ROLE_LABELS = {
   paciente: 'Pacientes',
 }
 
+function formatDate(value) {
+  if (!value) return 'Sin fecha'
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
 function AdminDashboardPage() {
   const [usuarios, setUsuarios] = useState([])
   const [registros, setRegistros] = useState([])
@@ -38,6 +46,7 @@ function AdminDashboardPage() {
         setUsuarios(usersResult.value)
         setUsersError('')
       } else {
+        setUsuarios([])
         setUsersError(usersResult.reason?.message || 'No se pudieron cargar los usuarios')
       }
 
@@ -53,6 +62,7 @@ function AdminDashboardPage() {
         setRegistros(triajeResult.value || [])
         setTriajeError('')
       } else {
+        setRegistros([])
         setTriajeError(triajeResult.reason?.message || 'No se pudieron cargar los registros de triaje')
       }
 
@@ -66,226 +76,176 @@ function AdminDashboardPage() {
     }
   }, [refreshKey])
 
+  const usuariosDisponibles = !usersError
   const activos = usuarios.filter((usuario) => usuario.activo).length
   const inactivos = usuarios.length - activos
   const storageConectado = storage?.oci_conectado === true
   const registrosRecientes = [...registros]
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4)
-  const usuariosRecientes = [...usuarios]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .slice(0, 4)
+    .slice(0, 5)
   const bucketsTriaje = new Set(registros.map((registro) => registro.bucket)).size
   const ultimoTriaje = registrosRecientes[0]?.created_at
+  const pendientes = [
+    !usuariosDisponibles || inactivos > 0,
+    Boolean(storageError) || !storageConectado,
+    Boolean(triajeError),
+  ].filter(Boolean).length
 
   return (
-    <div className="admin-ops">
-      <header className="admin-ops__header">
+    <div className="admin-console">
+      <header className="admin-console__header">
         <div>
-          <span className="admin-ops__kicker">Administración / Centro de operaciones</span>
-          <h1>Qué necesita atención hoy</h1>
-          <p>Una vista operativa de usuarios, infraestructura y flujo clínico.</p>
+          <div className="admin-console__eyebrow">
+            <span className="admin-console__eyebrow-line" aria-hidden="true" />
+            Control administrativo
+          </div>
+          <h1>Centro de operaciones</h1>
+          <p>Supervisa accesos, infraestructura y actividad clínica desde un mismo lugar.</p>
         </div>
         <button
           type="button"
-          className="admin-ops__refresh"
+          className="admin-console__refresh"
           onClick={() => setRefreshKey((actual) => actual + 1)}
           disabled={cargando}
         >
-          {cargando ? 'Actualizando...' : 'Actualizar datos'}
+          <span aria-hidden="true">↻</span>
+          {cargando ? 'Actualizando' : 'Actualizar'}
         </button>
       </header>
 
-      <div className="admin-ops__notice" role="status">
-        <span className="admin-ops__notice-dot" aria-hidden="true" />
-        <span>
-          {usersError || storageError || triajeError
-            ? 'Hay servicios pendientes de revisión.'
-            : 'Los datos de usuarios y storage se consultan desde el backend.'}
-        </span>
-        <span className="admin-ops__notice-time">Sesión administrativa</span>
+      <div className="admin-console__context" role="status">
+        <span className="admin-console__context-dot" aria-hidden="true" />
+        <span>{usersError || storageError || triajeError ? 'Hay datos que requieren revisión.' : 'Conectado al entorno local de MediFlow.'}</span>
+        <span className="admin-console__context-meta">Última consulta al abrir esta vista</span>
       </div>
 
-      <section className="admin-ops__layout" aria-label="Resumen operativo">
-        <div className="admin-ops__main-column">
-          <section className="ops-panel ops-panel--attention">
-            <div className="ops-panel__heading">
-              <div>
-                <span className="ops-panel__eyebrow">Prioridades</span>
-                <h2>Requiere atención</h2>
-              </div>
-              <span className="ops-panel__count">
-                {usersError ? 'No disponible' : `${inactivos} pendientes`}
-              </span>
-            </div>
-
-            <div className="attention-grid">
-              <Link className="attention-item" to="/users">
-                <span className={`attention-item__marker ${usersError ? 'is-danger' : inactivos > 0 ? 'is-warning' : 'is-ok'}`} aria-hidden="true" />
-                <span className="attention-item__copy">
-                  <strong>
-                    {usersError
-                      ? 'Usuarios no disponibles'
-                      : inactivos > 0
-                        ? `${inactivos} usuarios requieren revisión`
-                        : 'No hay accesos pendientes'}
-                  </strong>
-                  <span>{usersError || 'Revisa estados de acceso y roles'}</span>
-                </span>
-                <span className="attention-item__arrow" aria-hidden="true">→</span>
-              </Link>
-
-              <Link className="attention-item" to="/storage">
-                <span className={`attention-item__marker ${storageConectado ? 'is-ok' : 'is-danger'}`} aria-hidden="true" />
-                <span className="attention-item__copy">
-                  <strong>{storageConectado ? 'Storage operativo' : 'Storage no verificado'}</strong>
-                  <span>{storageError || storage?.mensaje || 'Comprueba la conexión con OCI'}</span>
-                </span>
-                <span className="attention-item__arrow" aria-hidden="true">→</span>
-              </Link>
-
-            </div>
-          </section>
-
-          <section className="ops-panel">
-            <div className="ops-panel__heading">
-              <div>
-                <span className="ops-panel__eyebrow">Trazabilidad clínica</span>
-                <h2>Resumen de triaje</h2>
-              </div>
-              <Link className="ops-panel__link" to="/agent">Abrir agente</Link>
-            </div>
-
-            <div className="triage-summary" aria-label="Métricas de triaje">
-              <div>
-                <strong>{triajeError ? '—' : registros.length}</strong>
-                <span>registros persistidos</span>
-              </div>
-              <div>
-                <strong>{triajeError ? '—' : bucketsTriaje}</strong>
-                <span>buckets utilizados</span>
-              </div>
-              <div>
-                <strong>{triajeError ? '—' : ultimoTriaje ? new Date(ultimoTriaje).toLocaleDateString() : '—'}</strong>
-                <span>último registro</span>
-              </div>
-            </div>
-            {triajeError && <p className="ops-state is-error" role="alert">{triajeError}</p>}
-            {!triajeError && registros.length === 0 && (
-              <p className="ops-state">No hay registros persistidos para resumir.</p>
-            )}
-          </section>
-
-          <section className="ops-panel">
-            <div className="ops-panel__heading">
-              <div>
-                <span className="ops-panel__eyebrow">Actividad clínica</span>
-                <h2>Últimos registros de triaje</h2>
-              </div>
-              <Link className="ops-panel__link" to="/agent">Abrir agente</Link>
-            </div>
-
-            {triajeError && <p className="ops-state is-error" role="alert">{triajeError}</p>}
-            {!triajeError && registrosRecientes.length === 0 && (
-              <p className="ops-state">Aún no hay registros de triaje persistidos.</p>
-            )}
-            {!triajeError && registrosRecientes.length > 0 && (
-              <div className="triage-activity">
-                {registrosRecientes.map((registro) => (
-                  <div className="triage-activity__row" key={registro.id}>
-                    <span className="triage-activity__dot" aria-hidden="true" />
-                    <span className="triage-activity__copy">
-                      <strong>{registro.ruta_documento || 'Documento clínico'}</strong>
-                      <span>{registro.bucket} · {new Date(registro.created_at).toLocaleString()}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+      <section className="admin-console__focus" aria-label="Atención prioritaria">
+        <div className="admin-console__focus-intro">
+          <span className="admin-console__section-label">Ahora</span>
+          <h2>Atención prioritaria</h2>
+          <p>Acciones que pueden afectar el acceso administrativo o la continuidad del servicio.</p>
         </div>
-
-        <aside className="admin-ops__side-column">
-          <section className="ops-panel ops-panel--status">
-            <div className="ops-panel__heading">
-              <div>
-                <span className="ops-panel__eyebrow">Infraestructura</span>
-                <h2>Estado del sistema</h2>
-              </div>
-            </div>
-
-            <div className="system-status">
-              <div className="system-status__row">
-                <span className="system-status__label">Usuarios</span>
-                <span className="system-status__value is-ok">{usersError ? 'Revisar' : 'Disponible'}</span>
-              </div>
-              <div className="system-status__row">
-                <span className="system-status__label">Object Storage</span>
-                <span className={`system-status__value ${storageConectado ? 'is-ok' : 'is-danger'}`}>
-                  {storageConectado ? 'Operativo' : 'Sin conexión'}
-                </span>
-              </div>
-              <div className="system-status__row">
-                <span className="system-status__label">Registros de triaje</span>
-                <span className={`system-status__value ${triajeError ? 'is-danger' : 'is-neutral'}`}>
-                  {triajeError ? 'Revisar' : `${registros.length} registrados`}
-                </span>
-              </div>
-            </div>
-
-            <Link className="ops-panel__wide-link" to="/storage">Abrir monitor de storage <span aria-hidden="true">→</span></Link>
-          </section>
-
-          <section className="ops-panel ops-panel--users">
-            <div className="ops-panel__heading">
-              <div>
-                <span className="ops-panel__eyebrow">Accesos</span>
-                <h2>Usuarios del espacio</h2>
-              </div>
-              <Link className="ops-panel__link" to="/users">Gestionar</Link>
-            </div>
-
-            <div className="user-summary">
-              <div className="user-summary__total">
-                <strong>{usuarios.length}</strong>
-                <span>cuentas registradas</span>
-              </div>
-              <div className="user-summary__roles">
-                {Object.entries(ROLE_LABELS).map(([rol, etiqueta]) => (
-                  <span key={rol}>
-                    <strong>{usersError ? '—' : usuarios.filter((usuario) => usuario.rol === rol).length}</strong> {etiqueta}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="recent-users">
-              {usuariosRecientes.map((usuario) => (
-                <div className="recent-user" key={usuario.id}>
-                  <span className="recent-user__avatar" aria-hidden="true">{usuario.nombre.slice(0, 1)}</span>
-                  <span className="recent-user__copy">
-                    <strong>{usuario.nombre}</strong>
-                    <span>{usuario.email}</span>
-                  </span>
-                  <span className={`recent-user__status ${usuario.activo ? 'is-ok' : 'is-danger'}`}>
-                    {usuario.activo ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
-              ))}
-              {!cargando && usersError && (
-                <p className="ops-empty is-error">No se puede mostrar la lista hasta recuperar el servicio.</p>
-              )}
-              {!cargando && !usersError && usuariosRecientes.length === 0 && (
-                <p className="ops-empty">No hay usuarios para mostrar.</p>
-              )}
-            </div>
-          </section>
-        </aside>
+        <div className="admin-console__focus-count">
+          <strong>{pendientes}</strong>
+          <span>{pendientes === 1 ? 'señal activa' : 'señales activas'}</span>
+        </div>
+        <div className="admin-console__focus-actions">
+          <Link className={usersError || inactivos > 0 ? 'focus-action is-alert' : 'focus-action'} to="/users">
+            <span className="focus-action__index">01</span>
+            <span className="focus-action__copy">
+              <strong>{usersError ? 'Usuarios no disponibles' : inactivos > 0 ? `${inactivos} accesos para revisar` : 'Accesos sin pendientes'}</strong>
+              <span>{usersError || 'Revisar estado de cuentas y roles'}</span>
+            </span>
+            <span aria-hidden="true">→</span>
+          </Link>
+          <Link className={!storageConectado ? 'focus-action is-alert' : 'focus-action'} to="/storage">
+            <span className="focus-action__index">02</span>
+            <span className="focus-action__copy">
+              <strong>{storageConectado ? 'Storage operativo' : 'Storage requiere revisión'}</strong>
+              <span>{storageError || storage?.mensaje || 'Verificar conexión y buckets'}</span>
+            </span>
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
       </section>
 
-      <footer className="admin-ops__footer">
-        <span>{usersError ? 'Datos de usuarios no disponibles' : `${activos} cuentas activas en el espacio de trabajo`}</span>
-        <Link to="/users">Revisar permisos y roles →</Link>
+      <section className="admin-console__metrics" aria-label="Indicadores principales">
+        <article className="console-metric">
+          <span className="console-metric__label">Cuentas activas</span>
+          <strong>{usuariosDisponibles ? activos : '—'}</strong>
+          <span>{usuariosDisponibles ? `${inactivos} para revisar` : 'Datos no disponibles'}</span>
+        </article>
+        <article className="console-metric">
+          <span className="console-metric__label">Registros de triaje</span>
+          <strong>{triajeError ? '—' : registros.length}</strong>
+          <span>{triajeError ? 'Servicio no disponible' : 'Persistidos en el sistema'}</span>
+        </article>
+        <article className="console-metric">
+          <span className="console-metric__label">Buckets en uso</span>
+          <strong>{triajeError ? '—' : bucketsTriaje}</strong>
+          <span>{storageConectado ? 'OCI conectado' : 'Storage sin verificar'}</span>
+        </article>
+        <article className="console-metric console-metric--status">
+          <span className="console-metric__label">Último registro</span>
+          <strong>{triajeError ? '—' : ultimoTriaje ? new Date(ultimoTriaje).toLocaleDateString() : '—'}</strong>
+          <span>{ultimoTriaje ? formatDate(ultimoTriaje).split(', ')[1] : 'Sin actividad registrada'}</span>
+        </article>
+      </section>
+
+      <section className="admin-console__workspace" aria-label="Actividad y accesos">
+        <article className="console-panel console-panel--activity">
+          <div className="console-panel__header">
+            <div>
+              <span className="admin-console__section-label">Trazabilidad clínica</span>
+              <h2>Actividad de triaje</h2>
+            </div>
+            <Link to="/agent">Abrir agente <span aria-hidden="true">↗</span></Link>
+          </div>
+
+          {triajeError && <p className="console-state is-error" role="alert">{triajeError}</p>}
+          {!triajeError && registrosRecientes.length === 0 && (
+            <p className="console-state">Todavía no hay registros persistidos para mostrar.</p>
+          )}
+          {!triajeError && registrosRecientes.length > 0 && (
+            <div className="activity-table-wrap">
+              <table className="activity-table">
+                <thead>
+                  <tr>
+                    <th>Documento</th>
+                    <th>Bucket</th>
+                    <th>Fecha</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registrosRecientes.map((registro) => (
+                    <tr key={registro.id}>
+                      <td><strong>{registro.ruta_documento || registro.ruta_triaje || 'Documento clínico'}</strong></td>
+                      <td><span className="activity-table__bucket">{registro.bucket}</span></td>
+                      <td>{formatDate(registro.created_at)}</td>
+                      <td>{registro.id_usuario}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </article>
+
+        <article className="console-panel console-panel--access">
+          <div className="console-panel__header">
+            <div>
+              <span className="admin-console__section-label">Gobierno de acceso</span>
+              <h2>Distribución de usuarios</h2>
+            </div>
+            <Link to="/users">Gestionar <span aria-hidden="true">↗</span></Link>
+          </div>
+
+          {usersError ? (
+            <p className="console-state is-error">No se puede consultar la distribución de roles.</p>
+          ) : (
+            <div className="role-distribution">
+              {Object.entries(ROLE_LABELS).map(([rol, etiqueta]) => {
+                const cantidad = usuarios.filter((usuario) => usuario.rol === rol).length
+                const porcentaje = usuarios.length ? (cantidad / usuarios.length) * 100 : 0
+                return (
+                  <div className="role-row" key={rol}>
+                    <div className="role-row__label"><span>{etiqueta}</span><strong>{cantidad}</strong></div>
+                    <div className="role-row__track"><span style={{ width: `${porcentaje}%` }} /></div>
+                  </div>
+                )
+              })}
+              {usuarios.length === 0 && <p className="console-state">No hay cuentas registradas.</p>}
+            </div>
+          )}
+
+          <Link className="console-panel__action" to="/users">Revisar permisos y estados <span aria-hidden="true">→</span></Link>
+        </article>
+      </section>
+
+      <footer className="admin-console__footer">
+        <span>Los datos se consultan desde el backend de MediFlow.</span>
+        <span>{storageConectado ? 'Storage conectado' : 'Storage pendiente de verificación'}</span>
       </footer>
     </div>
   )
