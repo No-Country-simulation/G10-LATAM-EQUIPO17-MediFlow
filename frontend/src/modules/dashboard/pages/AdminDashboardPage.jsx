@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { listarRegistrosTriaje } from '../../agent/services/agentService'
 import { listarUsuarios } from '../../users/services/usersService'
 import { verificarSaludStorage } from '../../storage/services/storageService'
 import './AdminDashboardPage.css'
@@ -7,8 +8,10 @@ import './AdminDashboardPage.css'
 function AdminDashboardPage() {
   const [usuarios, setUsuarios] = useState([])
   const [storage, setStorage] = useState(null)
+  const [registros, setRegistros] = useState([])
   const [usersError, setUsersError] = useState('')
   const [storageError, setStorageError] = useState('')
+  const [triajeError, setTriajeError] = useState('')
   const [cargando, setCargando] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -17,9 +20,10 @@ function AdminDashboardPage() {
 
     async function cargarDatos() {
       setCargando(true)
-      const [usersResult, storageResult] = await Promise.allSettled([
+      const [usersResult, storageResult, triajeResult] = await Promise.allSettled([
         listarUsuarios(),
         verificarSaludStorage(),
+        listarRegistrosTriaje(),
       ])
 
       if (!activo) return
@@ -40,6 +44,14 @@ function AdminDashboardPage() {
         setStorageError(storageResult.reason?.message || 'No se pudo verificar OCI')
       }
 
+      if (triajeResult.status === 'fulfilled') {
+        setRegistros(triajeResult.value || [])
+        setTriajeError('')
+      } else {
+        setRegistros([])
+        setTriajeError(triajeResult.reason?.message || 'No se pudieron cargar los registros de triaje')
+      }
+
       setCargando(false)
     }
 
@@ -53,7 +65,7 @@ function AdminDashboardPage() {
   const activeUsers = usuarios.filter((usuario) => usuario.activo).length
   const inactiveUsers = usuarios.length - activeUsers
   const storageConnected = storage?.oci_conectado === true
-  const hasAlert = !cargando && Boolean(usersError || inactiveUsers > 0 || storageError || !storageConnected)
+  const hasAlert = !cargando && Boolean(usersError || inactiveUsers > 0 || storageError || !storageConnected || triajeError)
 
   return (
     <div className="admin-dashboard">
@@ -79,17 +91,49 @@ function AdminDashboardPage() {
           <div>
             <strong id="alert-title">Hay elementos que requieren revisión</strong>
             <span>
-              {usersError || storageError || (inactiveUsers > 0 ? `${inactiveUsers} usuarios están inactivos.` : 'Storage no está disponible.')}
+              {usersError || storageError || triajeError || (inactiveUsers > 0 ? `${inactiveUsers} usuarios están inactivos.` : 'Storage no está disponible.')}
             </span>
           </div>
         </section>
       )}
 
+      <section className="admin-summary" aria-labelledby="summary-title">
+        <div className="admin-section__header">
+          <div>
+            <span className="admin-section__eyebrow">Estado actual</span>
+            <h2 id="summary-title">Resumen</h2>
+          </div>
+        </div>
+
+        <div className="admin-summary__grid">
+          <div className="admin-summary__item">
+            <span>Usuarios</span>
+            <strong>{usersError ? 'No disponible' : usuarios.length}</strong>
+            <small>{usersError || `${activeUsers} activas`}</small>
+          </div>
+          <div className="admin-summary__item">
+            <span>Accesos</span>
+            <strong>{usersError ? 'No disponible' : inactiveUsers}</strong>
+            <small>{usersError || (inactiveUsers === 1 ? 'cuenta inactiva' : 'cuentas inactivas')}</small>
+          </div>
+          <div className="admin-summary__item">
+            <span>Almacenamiento</span>
+            <strong>{storageConnected ? 'Operativo' : 'Revisar'}</strong>
+            <small>{storageError || storage?.mensaje || 'Object Storage'}</small>
+          </div>
+          <div className="admin-summary__item">
+            <span>Triaje</span>
+            <strong>{triajeError ? 'Revisar' : registros.length}</strong>
+            <small>{triajeError || 'registros disponibles'}</small>
+          </div>
+        </div>
+      </section>
+
       <section className="admin-modules" aria-labelledby="modules-title">
         <div className="admin-section__header">
           <div>
-            <span className="admin-section__eyebrow">Módulos administrativos</span>
-            <h2 id="modules-title">Administración del sistema</h2>
+            <span className="admin-section__eyebrow">Accesos directos</span>
+            <h2 id="modules-title">Módulos</h2>
           </div>
         </div>
 
@@ -116,6 +160,19 @@ function AdminDashboardPage() {
             </span>
             <span className={`admin-module__status ${storageConnected ? 'is-ok' : 'is-error'}`}>
               {storageConnected ? 'Operativo' : 'Revisar'}
+            </span>
+            <span className="admin-module__arrow" aria-hidden="true">↗</span>
+          </Link>
+
+          <Link className="admin-module" to="/agent">
+            <span className="admin-module__index">03</span>
+            <span className="admin-module__body">
+              <strong>Actividad de triaje</strong>
+              <span>Consulta los registros clínicos generados por el agente.</span>
+              <small>{triajeError || `${registros.length} registros disponibles`}</small>
+            </span>
+            <span className={`admin-module__status ${triajeError ? 'is-error' : 'is-ok'}`}>
+              {triajeError ? 'Revisar' : 'Disponible'}
             </span>
             <span className="admin-module__arrow" aria-hidden="true">↗</span>
           </Link>

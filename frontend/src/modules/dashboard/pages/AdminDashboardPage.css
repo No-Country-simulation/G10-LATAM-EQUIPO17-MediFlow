@@ -87,9 +87,18 @@
 .admin-alert strong { color: #8d3e3e; font-size: 0.76rem; }
 .admin-alert span:last-child { color: #a36161; font-size: 0.7rem; }
 
-.admin-modules { max-width: 850px; }
+.admin-summary,
+.admin-modules { max-width: 950px; }
 .admin-section__header { margin-bottom: 18px; }
 .admin-section__header h2 { margin: 7px 0 0; color: var(--admin-ink); font-family: var(--font-display); font-size: 1.3rem; letter-spacing: -0.035em; }
+.admin-summary { margin-bottom: 38px; }
+.admin-summary__grid { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--admin-line); border-bottom: 1px solid var(--admin-line); }
+.admin-summary__item { display: flex; min-height: 112px; flex-direction: column; gap: 7px; padding: 16px 18px; border-right: 1px solid var(--admin-line); }
+.admin-summary__item:first-child { padding-left: 0; }
+.admin-summary__item:last-child { border-right: 0; }
+.admin-summary__item span { color: var(--admin-muted); font-size: 0.67rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.admin-summary__item strong { color: var(--admin-ink); font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -0.04em; }
+.admin-summary__item small { min-height: 18px; color: #8ba0a7; font-size: 0.68rem; line-height: 1.35; }
 .admin-module-list { border-top: 1px solid var(--admin-line); }
 
 .admin-module {
@@ -118,7 +127,7 @@
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  max-width: 850px;
+  max-width: 950px;
   margin-top: 28px;
   color: #8da2a9;
   font-size: 0.67rem;
@@ -130,9 +139,16 @@
 @media (max-width: 760px) {
   .admin-dashboard__header { align-items: flex-start; flex-direction: column; }
   .admin-dashboard__refresh { width: 100%; }
+  .admin-summary__grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-summary__item:nth-child(2) { border-right: 0; }
+  .admin-summary__item:nth-child(3),
+  .admin-summary__item:nth-child(4) { border-top: 1px solid var(--admin-line); }
+  .admin-summary__item:nth-child(3) { padding-left: 0; }
 }
 
 @media (max-width: 560px) {
+  .admin-summary__grid { grid-template-columns: 1fr 1fr; }
+  .admin-summary__item { min-height: 100px; padding: 13px 10px; }
   .admin-module { grid-template-columns: 30px minmax(0, 1fr) 20px; gap: 12px; padding: 16px 4px; }
   .admin-module__status { grid-column: 2; grid-row: 2; justify-self: start; }
   .admin-module__arrow { grid-column: 3; grid-row: 1 / span 2; }
