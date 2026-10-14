@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: mediflow-backend
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && gunicorn src.main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./mediflow.db
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: API_KEY_GROQ
+        sync: false
+      - key: OCI_NAMESPACE
+        sync: false
+      - key: OCI_COMPARTMENT_ID
+        sync: false
+      - key: OCI_USER
+        sync: false
+      - key: OCI_FINGERPRINT
+        sync: false
+      - key: OCI_TENANCY
+        sync: false
+      - key: OCI_PRIVATE_KEY_BASE64
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_NOMBRE
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
