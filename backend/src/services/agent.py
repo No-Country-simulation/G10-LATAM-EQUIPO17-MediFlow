@@ -42,17 +42,47 @@ def get_storage() -> MediFlowStorage:
     return _medi_flow_storage
 
 
-llm_gemini = ChatGoogleGenerativeAI(
-    model=settings.llm_provider,
-    google_api_key=settings.llm_api_key,
-    temperature=0.0,
-)
+_llm_gemini = None
+_agente_vision = None
+_agente_triaje = None
+_agente_enrutador = None
 
-agente_vision = system_prompt_vision | llm_gemini.with_structured_output(ContenidoImagen)
 
-agente_triaje  = system_prompt_triaje | llm_gemini.with_structured_output(SalidaAgenteExtractor)
+def _get_llm():
+    global _llm_gemini
+    if _llm_gemini is None:
+        if not settings.llm_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Servicio de IA no configurado",
+            )
+        _llm_gemini = ChatGoogleGenerativeAI(
+            model=settings.llm_provider,
+            google_api_key=settings.llm_api_key,
+            temperature=0.0,
+        )
+    return _llm_gemini
 
-agente_enrutador = system_prompt_enrutador | llm_gemini.with_structured_output(DecisionEnrutamiento)
+
+def get_agente_vision():
+    global _agente_vision
+    if _agente_vision is None:
+        _agente_vision = system_prompt_vision | _get_llm().with_structured_output(ContenidoImagen)
+    return _agente_vision
+
+
+def get_agente_triaje():
+    global _agente_triaje
+    if _agente_triaje is None:
+        _agente_triaje = system_prompt_triaje | _get_llm().with_structured_output(SalidaAgenteExtractor)
+    return _agente_triaje
+
+
+def get_agente_enrutador():
+    global _agente_enrutador
+    if _agente_enrutador is None:
+        _agente_enrutador = system_prompt_enrutador | _get_llm().with_structured_output(DecisionEnrutamiento)
+    return _agente_enrutador
 
 extensiones = settings.extensiones_archivos
 
@@ -62,7 +92,7 @@ def get_es_texto(state:StatusTriaje) -> bool:
 
 def leer_imagen(imagen: str) -> str:
     try:
-        resultado = agente_vision.invoke({"imagen": imagen})
+        resultado = get_agente_vision().invoke({"imagen": imagen})
 
         return resultado.contenido
     except Exception as e:
@@ -139,7 +169,7 @@ def extraer_datos_triaje(state: StatusTriaje) -> dict:
     solicitud = state["solicitud"]
 
     try:
-        informacion_extraida = agente_triaje.invoke({
+        informacion_extraida = get_agente_triaje().invoke({
             "canal_origen": solicitud.canal_origen,
             "tipo_archivo": solicitud.tipo_archivo,
             "documento_texto": solicitud.documento_texto,
@@ -170,7 +200,7 @@ async def enrutar_triaje(state: StatusTriaje)-> dict:
 
     try:
 
-        decision_enrutamiento = agente_enrutador.invoke({
+        decision_enrutamiento = get_agente_enrutador().invoke({
             "umbral_confianza": umbral_confianza_minimo,
             "clasificacion": clasificacion,
             "datos_extraidos": datos_extraidos
