@@ -9,4 +9,11 @@
  * @property {string|null} last_login Último acceso (ISO).
  */
 
+/**
+ * @typedef {Object} PerfilGuardado
+ * @property {string} nombre Nombre guardado localmente.
+ * @property {string} email Correo guardado localmente.
+ * @property {string} actualizado_en Fecha ISO del último guardado.
+ */
+
 export {};

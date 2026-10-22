@@ -132,8 +132,7 @@ function AuthPage({ initialTab = 'login' }) {
               <>
                 <RegisterForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
                 <p className="auth-card__note">
-                  Tu cuenta se creará con el rol de paciente. La gestión de roles estará disponible
-                  próximamente.
+                  Tu cuenta se creará con el rol de paciente.
                 </p>
               </>
             )}

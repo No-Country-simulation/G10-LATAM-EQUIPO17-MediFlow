@@ -2,7 +2,6 @@ import { apiClient } from '../../../shared/api/apiClient'
 
 /**
  * Envía una solicitud de triaje textual al backend.
- * No se utiliza todavía en la UI: POST /triaje/ sigue devolviendo 501.
  * @param {import('../types/triaje.js').SolicitudTriaje} solicitud
  */
 export function procesarTriaje(solicitud) {
@@ -11,7 +10,7 @@ export function procesarTriaje(solicitud) {
 
 /**
  * Envía un archivo clínico al pipeline de triaje.
- * No se utiliza todavía en la UI: POST /triaje/archivo sigue devolviendo 501.
+ * El backend procesa un archivo por solicitud y responde de forma síncrona.
  * @param {File} archivo Archivo PDF, PNG o JPG (máximo 10 MB).
  * @param {string} documentoId Identificador del documento.
  * @param {string} [canalOrigen] Canal de ingreso (default "manual").

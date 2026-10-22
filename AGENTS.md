@@ -208,6 +208,21 @@ Si encuentra oportunidades de mejora fuera del alcance solicitado, debe señalar
 - Si algo se convierte en una regla permanente propor movelor a AGENTS.nd en lugar de dejarlo en la memoria . 
 - No guardes nunca datos sensibles (claves , tokens , datos personales).
 
+## Roles y autenticación
+
+1. El registro público crea exclusivamente usuarios con rol PACIENTE.
+2. La asignación inicial del rol corresponde al backend.
+3. Ningún componente público puede permitir que el usuario elija ADMIN, MEDICO u otro rol privilegiado.
+4. Los roles efectivos deben obtenerse de la sesión autenticada y del perfil validado por el backend (`GET /auth/me`).
+5. La gestión de roles se centraliza en el módulo de usuarios y requiere autorización administrativa (`GET /auth/usuarios`, `PATCH /auth/usuarios/{usuario_id}/rol`).
+6. Las validaciones del frontend no sustituyen las comprobaciones de autorización del backend.
+7. No se permite utilizar selectores visuales, mocks o variables locales para simular permisos en la aplicación normal.
+8. Se deben reutilizar los servicios de autenticación, API y usuarios existentes (`authService`, `usersService`, `apiClient`).
+9. Los componentes compartidos deben permanecer en `shared` y los componentes específicos deben permanecer dentro de sus módulos.
+10. Antes de modificar un servicio compartido, se deben identificar sus consumidores y evaluar los posibles efectos secundarios.
+11. Toda nueva funcionalidad debe respetar los contratos existentes del backend y documentar cualquier incompatibilidad detectada.
+12. Las pruebas deben distinguir claramente entre resultados verificados y escenarios pendientes.
+
 ## Limites
 - Siempre respetar las pautas y arquitectura establecidos 
 - Siempre actualizar `MEMORY.md` al terminar cada tarea

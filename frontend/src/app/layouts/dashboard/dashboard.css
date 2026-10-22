@@ -231,6 +231,40 @@
   min-width: 0;
 }
 
+.dashboard-header__context {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dashboard-header__breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: var(--color-mf-dark-3);
+  font-size: 0.65rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-header__breadcrumb > span:first-child { color: var(--color-mf-sky-mid); font-weight: 800; }
+.dashboard-header__breadcrumb-current { overflow: hidden; text-overflow: ellipsis; }
+
+.dashboard-header__title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-mf-dark);
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dashboard-header__menu {
   display: none;
   width: 36px;
@@ -295,44 +329,7 @@
   background: var(--color-mf-bg-2);
 }
 
-/* Selector de rol (solo desarrollo) */
-.dev-roles {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px;
-  border: 1px solid var(--color-mf-bg-4);
-  border-radius: 999px;
-  background: var(--color-mf-bg-2);
-}
-
-.dev-roles__btn {
-  padding: 5px 10px;
-  border: 0;
-  border-radius: 999px;
-  color: var(--color-mf-dark-3);
-  background: transparent;
-  cursor: pointer;
-  font-size: 0.68rem;
-  font-weight: 700;
-  transition: color 180ms ease, background 180ms ease;
-}
-
-.dev-roles__btn:hover { color: var(--color-mf-dark); }
-
-.dev-roles__btn.is-active {
-  color: #fff;
-  background: var(--color-mf-sky);
-}
-
-.dev-roles__badge {
-  padding: 0 6px;
-  color: var(--color-mf-sky-mid);
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+/* Selector de rol eliminado (gestión centralizada) */
 
 .dashboard-content {
   flex: 1;
@@ -370,7 +367,9 @@
 
 @media (max-width: 640px) {
   .dashboard-header { padding: 0 16px; min-height: 58px; }
-  .dashboard-header__user,
-  .dev-roles { display: none; }
+  .dashboard-header__user { display: none; }
+  .dashboard-header__breadcrumb { display: none; }
+  .dashboard-header__title { font-size: 0.82rem; }
+  .dashboard-header__logout { padding: 8px 11px; font-size: 0.7rem; }
   .dashboard-content { padding: 22px 16px 48px; }
 }

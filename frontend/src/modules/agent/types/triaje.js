@@ -26,10 +26,24 @@
  */
 
 /**
+ * @typedef {Object} NotificacionGenerada
+ * @property {string} canal
+ * @property {string} mensaje
+ */
+
+/**
  * @typedef {Object} DecisionEnrutamiento
  * @property {string} destino_principal Cola o destino clínico.
  * @property {boolean} requiere_auditoria_humana
  * @property {string} justificacion_enrutamiento
+ * @property {NotificacionGenerada|null} [notificacion_generada]
+ */
+
+/**
+ * @typedef {Object} AlmacenamientoOCI
+ * @property {string} bucket
+ * @property {string} ruta_objeto
+ * @property {string} status_backup
  */
 
 /**
@@ -39,6 +53,17 @@
  * @property {ClasificacionDocumento} clasificacion
  * @property {DatosExtraidos} datos_extraidos
  * @property {DecisionEnrutamiento} decision_enrutamiento
+ * @property {AlmacenamientoOCI} almacenamiento_oci
+ */
+
+/**
+ * @typedef {Object} RegistroTriaje
+ * @property {string} id
+ * @property {string|null} ruta_documento
+ * @property {string} ruta_triaje
+ * @property {string} bucket
+ * @property {string} id_usuario
+ * @property {string} created_at
  */
 
 export {};

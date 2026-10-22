@@ -1,39 +1,16 @@
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Avatar from '../../../shared/ui/Avatar'
 import { clearAuthTokens } from '../../../shared/api/apiClient'
-import { clearSession, ETIQUETA_ROL, getRol, getSession, ROLES, updateSession } from '../../session'
-
-function DevRoleSwitcher() {
-  const rol = getRol()
-
-  if (!import.meta.env.DEV) return null
-
-  const cambiarRol = (nuevoRol) => {
-    updateSession({ rol: nuevoRol })
-    window.location.reload()
-  }
-
-  return (
-    <div className="dev-roles" role="group" aria-label="Selector de rol (modo desarrollo)">
-      {[ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE].map((valor) => (
-        <button
-          key={valor}
-          type="button"
-          className={rol === valor ? 'dev-roles__btn is-active' : 'dev-roles__btn'}
-          onClick={() => cambiarRol(valor)}
-        >
-          {valor}
-        </button>
-      ))}
-      <span className="dev-roles__badge">dev</span>
-    </div>
-  )
-}
+import { clearSession, ETIQUETA_ROL, getRol, getSession } from '../../session'
+import { tituloDeRuta } from '../../navigation'
 
 function DashboardHeader({ onToggle }) {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const sesion = getSession()
   const rol = getRol()
+  const tituloActual = tituloDeRuta(pathname)
+  const esDashboard = pathname === '/dashboard'
 
   const handleLogout = () => {
     clearSession()
@@ -54,10 +31,18 @@ function DashboardHeader({ onToggle }) {
             <path d="M3 5h12M3 9h12M3 13h12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
           </svg>
         </button>
+
+        <div className="dashboard-header__context">
+          <nav className="dashboard-header__breadcrumb" aria-label="Ubicación actual">
+            <span>MediFlow</span>
+            <span aria-hidden="true">/</span>
+            <span className="dashboard-header__breadcrumb-current">{tituloActual || 'Panel'}</span>
+          </nav>
+          {esDashboard && <h1 className="dashboard-header__title">Panel de Administración</h1>}
+        </div>
       </div>
 
       <div className="dashboard-header__right">
-        <DevRoleSwitcher />
         <div className="dashboard-header__user">
           <span className="dashboard-header__user-name">{sesion?.nombre || 'Usuario'}</span>
           <span className="dashboard-header__user-rol">{ETIQUETA_ROL[rol] || rol}</span>
