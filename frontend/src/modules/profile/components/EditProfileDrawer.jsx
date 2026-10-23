@@ -128,7 +128,7 @@ function EditProfileDrawer({ perfil, onCerrar, onGuardar }) {
         <header className="profile-drawer__header">
           <span className="profile-drawer__eyebrow">CONFIGURACIÓN DE CUENTA</span>
           <h2 id="profile-drawer-title">Editar mi perfil</h2>
-          <p>Actualiza tus datos personales y credenciales de acceso.</p>
+          <p>Personaliza los datos que ves en este navegador.</p>
 
           <button
             type="button"
@@ -150,6 +150,7 @@ function EditProfileDrawer({ perfil, onCerrar, onGuardar }) {
                   <p>Datos visibles en tu perfil.</p>
                 </div>
               </div>
+              <p className="profile-drawer__local-note">Los cambios de nombre y correo solo se guardan en este navegador; no modifican tu cuenta en el servidor.</p>
 
               <div className="profile-drawer__field">
                 <label htmlFor="profile-nombre">Nombre completo</label>
@@ -192,7 +193,7 @@ function EditProfileDrawer({ perfil, onCerrar, onGuardar }) {
                 <span className="profile-drawer__section-badge" aria-hidden="true">02</span>
                 <div>
                   <h3 id="profile-section-password">Cambiar contraseña</h3>
-                  <p>Déjalo en blanco si no deseas modificarla.</p>
+                  <p>El cambio de contraseña aún no está disponible.</p>
                 </div>
               </div>
 

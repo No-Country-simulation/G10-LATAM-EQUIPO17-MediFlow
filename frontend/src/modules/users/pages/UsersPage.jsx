@@ -117,6 +117,7 @@ function UsersPage() {
       )}
 
       <ChangeRoleModal
+        key={usuarioEnModal?.id ?? 'closed'}
         usuario={usuarioEnModal}
         onClose={() => setUsuarioEnModal(null)}
         onConfirmar={handleCambiarRol}
