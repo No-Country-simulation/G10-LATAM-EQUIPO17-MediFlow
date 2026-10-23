@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 README.md 
 AGENTS.md
-
+.env 

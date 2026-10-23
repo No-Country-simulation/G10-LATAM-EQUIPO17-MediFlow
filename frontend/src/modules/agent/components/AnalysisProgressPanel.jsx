@@ -1,4 +1,6 @@
 import AgentFileIcon from './AgentFileIcon'
+import AgentProcessingAnimation from './AgentProcessingAnimation'
+import agenteFinal from '../../../shared/assets/Agente_Procesamiento-Final.jpeg'
 import { formatearBytes } from '../utils/agentFiles'
 
 const ESTADOS = {
@@ -8,55 +10,31 @@ const ESTADOS = {
   error: { texto: 'Error', tono: 'danger' },
 }
 
-function ScanVisual({ activo }) {
-  return (
-    <div className="agent-scan" aria-hidden="true">
-      <span className="agent-scan__orbit agent-scan__orbit--one" />
-      <span className="agent-scan__orbit agent-scan__orbit--two" />
-      <span className="agent-scan__particle agent-scan__particle--one" />
-      <span className="agent-scan__particle agent-scan__particle--two" />
-      <span className="agent-scan__particle agent-scan__particle--three" />
-
-      <div className="agent-scan__document">
-        <span className="agent-scan__sheet">
-          <span className="agent-scan__sheet-head" />
-          <span className="agent-scan__sheet-row" />
-          <span className="agent-scan__sheet-row agent-scan__sheet-row--short" />
-          <span className="agent-scan__sheet-row" />
-          <span className="agent-scan__sheet-row agent-scan__sheet-row--medium" />
-          <span className="agent-scan__beam" />
-        </span>
-        <span className="agent-scan__badge">IA</span>
-      </div>
-
-      <div className="agent-scan__core">
-        <span className="agent-scan__core-ring" />
-        <span className="agent-scan__core-ring agent-scan__core-ring--delay" />
-        <span className="agent-scan__core-dot" />
-      </div>
-
-      <span className="agent-scan__file-name">{activo?.archivo?.name || 'Procesando documento'}</span>
-    </div>
-  )
-}
-
 function CompleteVisual({ todoFallido, conIncidencias }) {
-  return (
-    <div className={`agent-complete-visual${todoFallido ? ' is-error' : ''}`} aria-hidden="true">
-      <span className="agent-complete-visual__ring" />
-      <span className="agent-complete-visual__icon">
-        {todoFallido ? (
+  if (todoFallido) {
+    return (
+      <div className="agent-complete-visual is-error" aria-hidden="true">
+        <span className="agent-complete-visual__icon">
           <svg viewBox="0 0 32 32" fill="none">
             <path d="M16 7v11M16 23.5v.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
           </svg>
-        ) : (
-          <svg viewBox="0 0 32 32" fill="none">
-            <path d="m8 16.5 5.2 5.2L24 11" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
-      </span>
+        </span>
+        <span className="agent-complete-visual__label">Sin resultados</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`agent-complete-visual${conIncidencias ? ' is-warning' : ''}`} aria-hidden="true">
+      <img
+        className="agent-complete-visual__image"
+        src={agenteFinal}
+        alt=""
+        draggable="false"
+        decoding="async"
+      />
       <span className="agent-complete-visual__label">
-        {todoFallido ? 'Sin resultados' : conIncidencias ? 'Lote con incidencias' : 'Análisis completado'}
+        {conIncidencias ? 'Lote con incidencias' : 'Análisis completado'}
       </span>
     </div>
   )
@@ -82,6 +60,17 @@ function AnalysisProgressPanel({
     archivos.find((item) => item.estado === 'processing')
   const todoFallido = finalizado && completados === 0 && errores > 0
   const conIncidencias = finalizado && errores > 0
+  const archivoFinal = finalizado
+    ? [...archivos]
+        .reverse()
+        .find((item) => item.estado === 'completed' || item.estado === 'error') || null
+    : null
+  const archivoMostrado = activo || archivoFinal
+  const resultadoFinal = finalizado
+    ? [...archivos]
+        .reverse()
+        .find((item) => item.estado === 'completed' && item.resultado)?.resultado || null
+    : null
 
   const titulo = !finalizado
     ? 'Analizando documento clínico'
@@ -113,14 +102,16 @@ function AnalysisProgressPanel({
 
       <div className="agent-analysis__grid">
         <div className={`agent-analysis__visual${finalizado ? ' is-complete' : ''}`}>
-          {finalizado ? (
-            <CompleteVisual todoFallido={todoFallido} conIncidencias={conIncidencias} />
-          ) : (
-            <ScanVisual activo={activo} />
-          )}
+          <div className="agent-analysis__media">
+            {finalizado ? (
+              <CompleteVisual todoFallido={todoFallido} conIncidencias={conIncidencias} />
+            ) : (
+              <AgentProcessingAnimation mensaje="Procesando documento clínico" />
+            )}
+          </div>
           <div className="agent-analysis__visual-copy">
             <span>{finalizado ? 'Estado del lote' : 'Documento activo'}</span>
-            <strong>{activo?.archivo?.name || (finalizado ? 'Lote finalizado' : 'Preparando archivo')}</strong>
+            <strong>{archivoMostrado?.archivo?.name || (finalizado ? 'Lote finalizado' : 'Preparando archivo')}</strong>
             <small>{finalizado ? descripcion : 'La animación representa el procesamiento en curso.'}</small>
           </div>
         </div>
@@ -176,26 +167,37 @@ function AnalysisProgressPanel({
             })}
           </ul>
 
-          {finalizado && (
-            <div className="agent-analysis__actions">
-              {errores > 0 && (
+          <div className="agent-analysis__actions">
+            {finalizado && (
+              <>
+                {errores > 0 && (
+                  <button
+                    type="button"
+                    className="agent-button agent-button--secondary"
+                    onClick={onReintentarFallidos}
+                  >
+                    Reintentar fallidos
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="agent-button agent-button--secondary"
-                  onClick={onReintentarFallidos}
+                  className={`agent-button ${resultadoFinal ? 'agent-button--secondary' : 'agent-button--primary'}`}
+                  onClick={onNuevaSeleccion}
                 >
-                  Reintentar fallidos
+                  Analizar otros documentos
                 </button>
-              )}
-              <button
-                type="button"
-                className="agent-button agent-button--primary"
-                onClick={onNuevaSeleccion}
-              >
-                Analizar otros documentos
-              </button>
-            </div>
-          )}
+                {resultadoFinal && (
+                  <button
+                    type="button"
+                    className="agent-button agent-button--primary"
+                    onClick={() => onVerResultado(resultadoFinal)}
+                  >
+                    Ver resultados
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </section>
