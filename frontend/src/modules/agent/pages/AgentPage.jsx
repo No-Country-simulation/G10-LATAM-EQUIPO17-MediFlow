@@ -2,9 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AgentHeader from '../components/AgentHeader'
 import AgentMetrics from '../components/AgentMetrics'
 import AnalysisProgressPanel from '../components/AnalysisProgressPanel'
+import ClinicalResultPanel from '../components/ClinicalResultPanel'
 import DocumentUploadPanel from '../components/DocumentUploadPanel'
-import InferenceInspector from '../components/InferenceInspector'
-import RecentProcessing from '../components/RecentProcessing'
 import TriajeStages from '../components/TriajeStages'
 import { listarRegistrosTriaje, procesarTriajeArchivo } from '../services/agentService'
 import {
@@ -12,9 +11,9 @@ import {
   etiquetaDeArchivo,
   generarDocumentoId,
   mensajeErrorProcesamiento,
-  ordenarRegistros,
   validarArchivo,
 } from '../utils/agentFiles'
+import { construirResultadoClinico } from '../utils/clinicalResult'
 import './agent.css'
 
 function crearIdLocal(indice) {
@@ -30,25 +29,14 @@ function enfocarTitulo(id) {
   })
 }
 
-function mensajeErrorHistorial(error) {
-  if (error?.status === 0) {
-    return 'No se pudo conectar con el servidor para consultar el historial.'
-  }
-  if (error?.status === 403) {
-    return 'No tienes permisos para consultar el historial de procesamientos.'
-  }
-  return 'No se pudo cargar el historial de procesamientos.'
-}
-
 function AgentPage() {
   const [archivos, setArchivos] = useState([])
   const [fase, setFase] = useState('idle')
   const [registros, setRegistros] = useState([])
   const [cargandoHistorial, setCargandoHistorial] = useState(true)
   const [historialCargado, setHistorialCargado] = useState(false)
-  const [errorHistorial, setErrorHistorial] = useState('')
-  const [resultados, setResultados] = useState({})
-  const [resultadoInspeccion, setResultadoInspeccion] = useState(null)
+  const [resultadoClinico, setResultadoClinico] = useState(null)
+  const [vista, setVista] = useState('agente')
   const [duraciones, setDuraciones] = useState([])
   const [resumen, setResumen] = useState({ total: 0, completados: 0, errores: 0 })
   const [archivoActivoId, setArchivoActivoId] = useState(null)
@@ -56,19 +44,15 @@ function AgentPage() {
 
   const procesandoRef = useRef(false)
 
-  const cargarRegistros = useCallback(async (mostrarCarga = true) => {
-    if (mostrarCarga) {
-      setCargandoHistorial(true)
-      setErrorHistorial('')
-    }
+  const cargarRegistros = useCallback(async () => {
+    setCargandoHistorial(true)
 
     try {
       const datos = await listarRegistrosTriaje()
       setRegistros(Array.isArray(datos) ? datos : [])
       setHistorialCargado(true)
-      setErrorHistorial('')
-    } catch (error) {
-      setErrorHistorial(mensajeErrorHistorial(error))
+    } catch {
+      setHistorialCargado(false)
     } finally {
       setCargandoHistorial(false)
     }
@@ -82,10 +66,9 @@ function AgentPage() {
         if (!activo) return
         setRegistros(Array.isArray(datos) ? datos : [])
         setHistorialCargado(true)
-        setErrorHistorial('')
       })
-      .catch((error) => {
-        if (activo) setErrorHistorial(mensajeErrorHistorial(error))
+      .catch(() => {
+        if (activo) setHistorialCargado(false)
       })
       .finally(() => {
         if (activo) setCargandoHistorial(false)
@@ -95,8 +78,6 @@ function AgentPage() {
       activo = false
     }
   }, [])
-
-  const registrosOrdenados = useMemo(() => ordenarRegistros(registros), [registros])
 
   const metricas = useMemo(() => {
     const procesadosHoy = historialCargado
@@ -132,6 +113,7 @@ function AgentPage() {
           documentoId: '',
           resultado: null,
           duracion: null,
+          procesadoEn: null,
         })
       })
 
@@ -163,6 +145,8 @@ function AgentPage() {
     setFase('idle')
     setResumen({ total: 0, completados: 0, errores: 0 })
     setArchivoActivoId(null)
+    setVista('agente')
+    setResultadoClinico(null)
     enfocarTitulo('agent-upload-title')
   }
 
@@ -189,13 +173,21 @@ function AgentPage() {
     setFase('processing')
     enfocarTitulo('agent-analysis-title')
     setEstadoAgente('procesando')
-    setResultadoInspeccion(null)
+    setResultadoClinico(null)
+    setVista('agente')
     setArchivoActivoId(null)
     setResumen({ total: validos.length, completados: 0, errores: 0 })
     setArchivos((previos) =>
       previos.map((item) =>
         item.estado === 'valid'
-          ? { ...item, error: '', documentoId: '', resultado: null, duracion: null }
+          ? {
+              ...item,
+              error: '',
+              documentoId: '',
+              resultado: null,
+              duracion: null,
+              procesadoEn: null,
+            }
           : item,
       ),
     )
@@ -203,7 +195,6 @@ function AgentPage() {
     let completados = 0
     let errores = 0
     let falloCritico = false
-    let ultimoResultado = null
 
     try {
       for (let indice = 0; indice < validos.length; indice += 1) {
@@ -232,8 +223,6 @@ function AgentPage() {
           const idRespuesta = respuesta.documento_id || documentoId
 
           completados += 1
-          ultimoResultado = respuesta
-          setResultados((previos) => ({ ...previos, [idRespuesta]: respuesta }))
           setDuraciones((previas) => [...previas, duracion])
           setArchivos((previos) =>
             previos.map((archivo) =>
@@ -244,6 +233,7 @@ function AgentPage() {
                     documentoId: idRespuesta,
                     resultado: respuesta,
                     duracion,
+                    procesadoEn: new Date().toISOString(),
                     error: '',
                   }
                 : archivo,
@@ -268,7 +258,6 @@ function AgentPage() {
     } finally {
       setArchivoActivoId(null)
       setFase('complete')
-      setResultadoInspeccion(ultimoResultado)
       procesandoRef.current = false
 
       if (completados > 0 && errores === 0) {
@@ -300,10 +289,13 @@ function AgentPage() {
         documentoId: '',
         resultado: null,
         duracion: null,
+        procesadoEn: null,
       })),
     )
     setResumen({ total: 0, completados: 0, errores: 0 })
     setArchivoActivoId(null)
+    setVista('agente')
+    setResultadoClinico(null)
     setFase('review')
     enfocarTitulo('agent-upload-title')
   }
@@ -314,22 +306,50 @@ function AgentPage() {
     setFase('idle')
     setResumen({ total: 0, completados: 0, errores: 0 })
     setArchivoActivoId(null)
+    setVista('agente')
+    setResultadoClinico(null)
     enfocarTitulo('agent-upload-title')
   }
 
-  const verResultado = useCallback((resultado) => {
+  const verResultado = useCallback((resultado, contexto = {}) => {
     if (!resultado) return
-    setResultadoInspeccion(resultado)
+    setResultadoClinico(construirResultadoClinico(resultado, contexto))
+    setVista('resultado')
 
     window.requestAnimationFrame(() => {
-      const inspector = document.getElementById('agent-inference')
-      if (!inspector) return
+      const titulo = document.getElementById('agent-result-title')
+      if (!titulo) return
+
+      titulo.focus({ preventScroll: true })
       const movimientoReducido = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      inspector.scrollIntoView({
+      titulo.scrollIntoView({
         behavior: movimientoReducido ? 'auto' : 'smooth',
-        block: 'nearest',
+        block: 'start',
       })
     })
+  }, [])
+
+  const volverAlAgente = useCallback(() => {
+    setVista('agente')
+    setResultadoClinico(null)
+    enfocarTitulo(
+      fase === 'processing' || fase === 'complete'
+        ? 'agent-analysis-title'
+        : fase === 'confirm'
+          ? 'agent-confirm-title'
+          : 'agent-upload-title',
+    )
+  }, [fase])
+
+  const analizarOtroDocumento = useCallback(() => {
+    if (procesandoRef.current) return
+    setVista('agente')
+    setResultadoClinico(null)
+    setArchivos([])
+    setFase('idle')
+    setResumen({ total: 0, completados: 0, errores: 0 })
+    setArchivoActivoId(null)
+    enfocarTitulo('agent-upload-title')
   }, [])
 
   const estadoPipeline =
@@ -350,42 +370,42 @@ function AgentPage() {
         cargandoHistorial={cargandoHistorial && !historialCargado}
       />
 
-      {fase === 'processing' || fase === 'complete' ? (
-        <AnalysisProgressPanel
-          archivos={archivos}
-          archivoActivoId={archivoActivoId}
-          fase={fase}
-          resumen={resumen}
-          onNuevaSeleccion={nuevaSeleccion}
-          onReintentarFallidos={reintentarFallidos}
-          onVerResultado={verResultado}
+      {vista === 'resultado' && resultadoClinico ? (
+        <ClinicalResultPanel
+          key={`${resultadoClinico.documentoId}-${resultadoClinico.fechaProcesamiento}`}
+          vista={resultadoClinico}
+          onVolver={volverAlAgente}
+          onAnalizarOtro={analizarOtroDocumento}
+          puedeAnalizarOtro={fase !== 'processing'}
         />
       ) : (
-        <DocumentUploadPanel
-          archivos={archivos}
-          fase={fase}
-          onAgregar={agregarArchivos}
-          onEliminar={eliminarArchivo}
-          onLimpiar={limpiarSeleccion}
-          onContinuar={continuarAnalisis}
-          onVolver={volverARevisar}
-          onConfirmar={iniciarAnalisis}
-        />
+        <>
+          {fase === 'processing' || fase === 'complete' ? (
+            <AnalysisProgressPanel
+              archivos={archivos}
+              archivoActivoId={archivoActivoId}
+              fase={fase}
+              resumen={resumen}
+              onNuevaSeleccion={nuevaSeleccion}
+              onReintentarFallidos={reintentarFallidos}
+              onVerResultado={verResultado}
+            />
+          ) : (
+            <DocumentUploadPanel
+              archivos={archivos}
+              fase={fase}
+              onAgregar={agregarArchivos}
+              onEliminar={eliminarArchivo}
+              onLimpiar={limpiarSeleccion}
+              onContinuar={continuarAnalisis}
+              onVolver={volverARevisar}
+              onConfirmar={iniciarAnalisis}
+            />
+          )}
+
+          <TriajeStages estado={estadoPipeline} />
+        </>
       )}
-
-      <TriajeStages estado={estadoPipeline} />
-
-      <div className="agent-bottom">
-        <RecentProcessing
-          registros={registrosOrdenados}
-          cargando={cargandoHistorial}
-          error={errorHistorial}
-          onReintentar={() => cargarRegistros()}
-          resultados={resultados}
-          onVerResultado={verResultado}
-        />
-        <InferenceInspector resultado={resultadoInspeccion} />
-      </div>
     </div>
   )
 }

@@ -57,6 +57,31 @@
  */
 
 /**
+ * @typedef {Object} ResultadoClinicoVista
+ * @property {string} documentoId
+ * @property {string} archivoNombre
+ * @property {string} archivoTipo
+ * @property {string|null} archivoTamano
+ * @property {string} tipoDocumento
+ * @property {string} fechaDocumento
+ * @property {string} fechaProcesamiento
+ * @property {string|null} resumen
+ * @property {string} especialidad
+ * @property {string} destino
+ * @property {string} prioridad
+ * @property {Array<{etiqueta: string, valor: string}>} campos
+ * @property {number} cantidadCampos
+ * @property {{estado: 'lista'|'ninguno'|'no-disponible', valores: Array<string>, texto: string}} medicamentos
+ * @property {{texto: string, tono: 'ok'|'warning'|'danger'|'neutral'}} persistencia
+ * @property {{principal: string|null, observaciones: Array<string>}} hallazgos
+ * @property {boolean} revisionHumana
+ * @property {string} estado
+ * @property {string} tiempo
+ * @property {string} confianza
+ * @property {{total: number, completados: number, errores: number}|null} lote
+ */
+
+/**
  * @typedef {Object} RegistroTriaje
  * @property {string} id
  * @property {string|null} ruta_documento

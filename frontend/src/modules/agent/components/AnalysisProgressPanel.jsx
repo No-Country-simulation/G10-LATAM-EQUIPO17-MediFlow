@@ -66,11 +66,20 @@ function AnalysisProgressPanel({
         .find((item) => item.estado === 'completed' || item.estado === 'error') || null
     : null
   const archivoMostrado = activo || archivoFinal
-  const resultadoFinal = finalizado
+  const itemResultadoFinal = finalizado
     ? [...archivos]
         .reverse()
-        .find((item) => item.estado === 'completed' && item.resultado)?.resultado || null
+        .find((item) => item.estado === 'completed' && item.resultado) || null
     : null
+  const resultadoFinal = itemResultadoFinal?.resultado || null
+
+  const contextoResultado = (item) => ({
+    archivo: item?.archivo,
+    archivoTipo: item?.tipo,
+    duracion: item?.duracion,
+    procesadoEn: item?.procesadoEn,
+    lote: { total, completados, errores },
+  })
 
   const titulo = !finalizado
     ? 'Analizando documento clínico'
@@ -157,7 +166,7 @@ function AnalysisProgressPanel({
                     <button
                       type="button"
                       className="agent-queue-row__action"
-                      onClick={() => onVerResultado(item.resultado)}
+                      onClick={() => onVerResultado(item.resultado, contextoResultado(item))}
                     >
                       Ver
                     </button>
@@ -190,7 +199,7 @@ function AnalysisProgressPanel({
                   <button
                     type="button"
                     className="agent-button agent-button--primary"
-                    onClick={() => onVerResultado(resultadoFinal)}
+                    onClick={() => onVerResultado(resultadoFinal, contextoResultado(itemResultadoFinal))}
                   >
                     Ver resultados
                   </button>

@@ -87,7 +87,7 @@ function AdminDashboardPage() {
         </section>
       )}
 
-      <AgentStatusCard metricas={resumen?.metricas} cargando={cargando} />
+      <AgentStatusCard />
 
       <QuickStatsGrid metricas={resumen?.metricas} cargando={cargando} />
 
