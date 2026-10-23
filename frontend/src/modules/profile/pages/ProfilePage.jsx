@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import AgentProfileCard from '../components/AgentProfileCard'
 import EditProfileDrawer from '../components/EditProfileDrawer'
 import ProfileCard from '../components/ProfileCard'
-import { getRol, getSession, updateSession } from '../../../app/session'
+import { getRol, getSession, ROLES, updateSession } from '../../../app/session'
 import {
   guardarPerfilGuardado,
   obtenerPerfil,
@@ -79,6 +80,11 @@ function ProfilePage() {
   }, [perfil])
 
   const cuentaActiva = perfil.activo !== false
+  const descripcion = {
+    [ROLES.ADMIN]: 'Consulta tu cuenta y accede a la gestión del sistema.',
+    [ROLES.MEDICO]: 'Consulta tu cuenta y tus herramientas de trabajo clínico.',
+    [ROLES.PACIENTE]: 'Consulta la información y el estado de tu cuenta.',
+  }[perfil.rol] || 'Consulta la información de tu cuenta.'
 
   return (
     <div className="profile-page">
@@ -86,7 +92,7 @@ function ProfilePage() {
         <div>
           <span className="profile-page__eyebrow">MI CUENTA</span>
           <h1>Mi perfil</h1>
-          <p>Administra tu información personal y la seguridad de tu cuenta.</p>
+          <p>{descripcion}</p>
         </div>
 
         <span className={`profile-page__status${cuentaActiva ? '' : ' is-inactive'}`}>
@@ -96,7 +102,29 @@ function ProfilePage() {
       </header>
 
       <div className="profile-page__grid">
-        <AgentProfileCard />
+        {perfil.rol === ROLES.MEDICO ? <AgentProfileCard /> : (
+          <section className="profile-context" aria-labelledby="profile-context-title">
+            <span className="profile-page__eyebrow">TU ESPACIO</span>
+            <h2 id="profile-context-title">
+              {perfil.rol === ROLES.ADMIN ? 'Administración' : 'Cuenta personal'}
+            </h2>
+            <p>
+              {perfil.rol === ROLES.ADMIN
+                ? 'Accede a las áreas de administración disponibles para tu cuenta.'
+                : 'Consulta tu espacio personal y revisa la información asociada a tu acceso.'}
+            </p>
+            <nav aria-label="Accesos desde mi perfil" className="profile-context__links">
+              {perfil.rol === ROLES.ADMIN ? (
+                <>
+                  <Link to="/users">Usuarios y permisos <span aria-hidden="true">→</span></Link>
+                  <Link to="/storage">Almacenamiento OCI <span aria-hidden="true">→</span></Link>
+                </>
+              ) : (
+                <Link to="/dashboard">Ir a mi espacio <span aria-hidden="true">→</span></Link>
+              )}
+            </nav>
+          </section>
+        )}
         <ProfileCard perfil={perfil} onEditar={abrirDrawer} />
       </div>
 

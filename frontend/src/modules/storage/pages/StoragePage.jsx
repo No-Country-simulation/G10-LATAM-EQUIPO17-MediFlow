@@ -39,6 +39,7 @@ function StoragePage() {
   const [estadoSeleccionado, setEstadoSeleccionado] = useState('recibido')
   const [prefijo, setPrefijo] = useState('')
   const [limite, setLimite] = useState(50)
+  const [formato, setFormato] = useState('todos')
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null)
   const [metadata, setMetadata] = useState(null)
   const [cargando, setCargando] = useState(true)
@@ -189,6 +190,9 @@ function StoragePage() {
   const buckets = estado?.buckets && typeof estado.buckets === 'object'
     ? Object.keys(estado.buckets) : []
   const bucketActual = buckets[ESTADOS.findIndex((item) => item.value === estadoSeleccionado)]
+  const documentosVisibles = formato === 'todos'
+    ? documentos
+    : documentos.filter((documento) => tipoArchivo(documento.nombre) === formato)
 
   return (
     <div className="storage-page">
@@ -217,7 +221,7 @@ function StoragePage() {
               <h2 id="documents-title">Documentos</h2>
             </div>
             <div className="storage-documents__tools">
-              <span className="storage-documents__count">{cargandoDocumentos || errorDocumentos ? '—' : documentos.length} resultados mostrados (máx. {limite})</span>
+              <span className="storage-documents__count">{cargandoDocumentos || errorDocumentos ? '—' : documentosVisibles.length} resultados mostrados (máx. {limite} consultados)</span>
               <button type="button" className="storage-refresh" onClick={actualizarDocumentos} disabled={cargandoDocumentos}>
                 {cargandoDocumentos ? 'Actualizando…' : 'Actualizar'}
               </button>
@@ -242,27 +246,41 @@ function StoragePage() {
           </div>
 
           <div className="storage-search">
-            <label htmlFor="storage-prefix">Buscar por prefijo</label>
-            <div className="storage-search__controls">
-              <input
-                id="storage-prefix"
-                type="search"
-                value={prefijo}
-                onChange={(event) => cambiarPrefijo(event.target.value)}
-                placeholder="Ej. 2026/10/22/"
-              />
-              {prefijo && <button type="button" onClick={() => cambiarPrefijo('')}>Limpiar filtro</button>}
+            <div className="storage-search__field">
+              <label htmlFor="storage-prefix">Buscar por prefijo</label>
+              <div className="storage-search__controls">
+                <input
+                  id="storage-prefix"
+                  type="search"
+                  value={prefijo}
+                  onChange={(event) => cambiarPrefijo(event.target.value)}
+                  placeholder="Ej. 2026/10/22/"
+                />
+                {prefijo && <button type="button" onClick={() => cambiarPrefijo('')}>Limpiar filtro</button>}
+              </div>
+              <small>Los resultados se actualizan automáticamente mientras escribes.</small>
             </div>
-            <small>Los resultados se actualizan automáticamente mientras escribes.</small>
+            <div className="storage-search__field">
+              <label htmlFor="storage-format">Formato de archivo</label>
+              <select id="storage-format" value={formato} onChange={(event) => setFormato(event.target.value)}>
+                <option value="todos">Todos los formatos</option>
+                <option value="PDF">PDF</option>
+                <option value="IMG">Imágenes (JPG, PNG)</option>
+                <option value="JSON">JSON</option>
+                <option value="TXT">TXT</option>
+                <option value="DOC">Otros</option>
+              </select>
+              <small>Filtra solo los documentos cargados, no todo OCI.</small>
+            </div>
           </div>
 
           <div className="storage-documents__panel">
             {cargandoDocumentos && <p className="storage-feedback">Cargando documentos…</p>}
             {!cargandoDocumentos && errorDocumentos && <p className="storage-feedback is-error" role="alert">{errorDocumentos}</p>}
-            {!cargandoDocumentos && !errorDocumentos && documentos.length === 0 && (
-              <p className="storage-feedback">{prefijo ? 'No hay documentos que coincidan con este prefijo.' : 'No hay documentos almacenados en este estado.'}</p>
+            {!cargandoDocumentos && !errorDocumentos && documentosVisibles.length === 0 && (
+              <p className="storage-feedback">{documentos.length > 0 ? 'Ninguno de los documentos cargados tiene este formato.' : prefijo ? 'No hay documentos que coincidan con este prefijo.' : 'No hay documentos almacenados en este estado.'}</p>
             )}
-            {!cargandoDocumentos && !errorDocumentos && documentos.length > 0 && (
+            {!cargandoDocumentos && !errorDocumentos && documentosVisibles.length > 0 && (
               <div className="storage-table-wrap">
                 <table className="storage-table">
                   <thead>
@@ -272,7 +290,7 @@ function StoragePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {documentos.map((documento) => (
+                    {documentosVisibles.map((documento) => (
                       <tr key={documento.nombre}>
                         <td>
                           <span className="storage-table__file">

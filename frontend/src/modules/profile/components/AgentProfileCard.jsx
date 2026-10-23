@@ -1,11 +1,12 @@
 import agenteFlowData from '../../../shared/assets/agente-flowData.png'
+import { Link } from 'react-router-dom'
 
 function AgentProfileCard() {
   return (
     <article className="profile-agent">
       <span className="profile-agent__badge">
         <span className="profile-agent__badge-dot" aria-hidden="true" />
-        Tu agente asignado
+        Herramienta clínica
       </span>
 
       <div className="profile-agent__visual">
@@ -19,12 +20,11 @@ function AgentProfileCard() {
       <div className="profile-agent__copy">
         <span className="profile-agent__eyebrow">ASISTENTE MÉDICO DIGITAL</span>
         <h2>Tu agente MediFlow</h2>
-        <p>Disponible para ayudarte a gestionar información clínica de forma segura.</p>
+        <p>Accede al agente para procesar documentos clínicos.</p>
       </div>
 
       <div className="profile-agent__tags">
-        <span>✓ Gestión clínica</span>
-        <span>✓ Siempre disponible</span>
+        <Link to="/agent">Abrir Agente MediFlow →</Link>
       </div>
     </article>
   )
