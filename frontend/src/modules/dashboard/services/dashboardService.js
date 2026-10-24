@@ -111,13 +111,13 @@ function construirActividades(registros, usuarios) {
  * Reúne en una sola carga la información real disponible para el dashboard admin.
  * Cada fuente es independiente: si una falla, el resto del dashboard sigue operativo.
  */
-export async function cargarResumenAdmin() {
+export async function cargarResumenAdmin({ force = false } = {}) {
   const [usuariosResultado, storageResultado, registrosResultado, auditoriaResultado] =
     await Promise.allSettled([
-      listarUsuarios(),
-      verificarSaludStorage(),
-      listarRegistrosTriaje(),
-      listarDocumentos({ estado: ESTADO_DOCUMENTO.AUDITORIA, limite: LIMITE_AUDITORIA }),
+      listarUsuarios({ force }),
+      verificarSaludStorage({ force }),
+      listarRegistrosTriaje({ force }),
+      listarDocumentos({ estado: ESTADO_DOCUMENTO.AUDITORIA, limite: LIMITE_AUDITORIA, force }),
     ])
 
   const usuarios = usuariosResultado.status === 'fulfilled' && Array.isArray(usuariosResultado.value)

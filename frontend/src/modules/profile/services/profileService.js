@@ -1,4 +1,5 @@
 import { apiClient } from '../../../shared/api/apiClient'
+import { fetchQuery, invalidateQuery, queryKeys, queryTTL } from '../../../shared/api/queryCache'
 
 const PERFIL_GUARDADO_KEY = 'mediflow.profile.overrides'
 
@@ -14,8 +15,16 @@ function leerPerfilesGuardados() {
   }
 }
 
-export function obtenerPerfil() {
-  return apiClient('/auth/me')
+export function obtenerPerfil({ force = false } = {}) {
+  return fetchQuery(
+    queryKeys.perfil,
+    () => apiClient('/auth/me'),
+    { force, ttl: queryTTL.perfil },
+  )
+}
+
+export function invalidarPerfil() {
+  invalidateQuery(queryKeys.perfil)
 }
 
 export function obtenerPerfilGuardado(usuarioId) {

@@ -16,6 +16,9 @@ import {
 import { construirResultadoClinico } from '../utils/clinicalResult'
 import './agent.css'
 
+const MENSAJE_CANCELACION =
+  'Se canceló la espera de la respuesta por solicitud del usuario. El servidor puede continuar el procesamiento.'
+
 function crearIdLocal(indice) {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -41,41 +44,46 @@ function AgentPage() {
   const [resumen, setResumen] = useState({ total: 0, completados: 0, errores: 0 })
   const [archivoActivoId, setArchivoActivoId] = useState(null)
   const [estadoAgente, setEstadoAgente] = useState('desconocido')
+  const [cancelando, setCancelando] = useState(false)
 
   const procesandoRef = useRef(false)
+  const ejecucionRef = useRef(null)
+  const solicitudRegistros = useRef(0)
 
-  const cargarRegistros = useCallback(async () => {
+  const cargarRegistros = useCallback(async ({ force = false } = {}) => {
+    const solicitudActual = ++solicitudRegistros.current
     setCargandoHistorial(true)
 
     try {
-      const datos = await listarRegistrosTriaje()
+      const datos = await listarRegistrosTriaje({ force })
+      if (solicitudActual !== solicitudRegistros.current) return
       setRegistros(Array.isArray(datos) ? datos : [])
       setHistorialCargado(true)
     } catch {
+      if (solicitudActual !== solicitudRegistros.current) return
       setHistorialCargado(false)
     } finally {
-      setCargandoHistorial(false)
+      if (solicitudActual === solicitudRegistros.current) setCargandoHistorial(false)
     }
   }, [])
 
   useEffect(() => {
-    let activo = true
-
-    listarRegistrosTriaje()
-      .then((datos) => {
-        if (!activo) return
-        setRegistros(Array.isArray(datos) ? datos : [])
-        setHistorialCargado(true)
-      })
-      .catch(() => {
-        if (activo) setHistorialCargado(false)
-      })
-      .finally(() => {
-        if (activo) setCargandoHistorial(false)
-      })
+    Promise.resolve().then(() => cargarRegistros())
 
     return () => {
-      activo = false
+      solicitudRegistros.current += 1
+    }
+  }, [cargarRegistros])
+
+  useEffect(() => {
+    return () => {
+      const ejecucion = ejecucionRef.current
+      if (ejecucion) {
+        ejecucion.cancelada = true
+        ejecucion.controller.abort()
+        ejecucionRef.current = null
+      }
+      procesandoRef.current = false
     }
   }, [])
 
@@ -169,7 +177,16 @@ function AgentPage() {
     const validos = archivos.filter((item) => item.estado === 'valid')
     if (validos.length === 0) return
 
+    const ejecucion = {
+      id: crearIdLocal(0),
+      controller: new AbortController(),
+      cancelada: false,
+      archivoActivoId: null,
+    }
+
+    ejecucionRef.current = ejecucion
     procesandoRef.current = true
+    setCancelando(false)
     setFase('processing')
     enfocarTitulo('agent-analysis-title')
     setEstadoAgente('procesando')
@@ -198,9 +215,12 @@ function AgentPage() {
 
     try {
       for (let indice = 0; indice < validos.length; indice += 1) {
+        if (ejecucion.cancelada || ejecucionRef.current !== ejecucion) break
+
         const item = validos[indice]
         const documentoId = generarDocumentoId(item.archivo, indice)
 
+        ejecucion.archivoActivoId = item.id
         setArchivoActivoId(item.id)
         setArchivos((previos) =>
           previos.map((archivo) =>
@@ -213,9 +233,35 @@ function AgentPage() {
         const inicio = performance.now()
 
         try {
-          const respuesta = await procesarTriajeArchivo(item.archivo, documentoId, 'manual')
+          const respuesta = await procesarTriajeArchivo(item.archivo, documentoId, 'manual', {
+            signal: ejecucion.controller.signal,
+          })
 
-          if (!respuesta || typeof respuesta !== 'object') {
+          if (ejecucion.cancelada || ejecucionRef.current !== ejecucion) {
+            if (ejecucion.cancelada && ejecucionRef.current === ejecucion) {
+              errores += 1
+              setArchivos((previos) =>
+                previos.map((archivo) =>
+                  archivo.id === item.id
+                    ? { ...archivo, estado: 'error', error: MENSAJE_CANCELACION }
+                    : archivo,
+                ),
+              )
+            }
+            break
+          }
+
+          const respuestaValida =
+            respuesta &&
+            typeof respuesta === 'object' &&
+            !Array.isArray(respuesta) &&
+            typeof respuesta.documento_id === 'string' &&
+            respuesta.documento_id.trim() !== '' &&
+            respuesta.clasificacion &&
+            typeof respuesta.clasificacion === 'object' &&
+            !Array.isArray(respuesta.clasificacion)
+
+          if (!respuestaValida) {
             throw new Error('Respuesta inválida del servicio de análisis.')
           }
 
@@ -240,6 +286,21 @@ function AgentPage() {
             ),
           )
         } catch (error) {
+          if (ejecucionRef.current !== ejecucion) break
+
+          if (ejecucion.cancelada || error?.name === 'AbortError') {
+            ejecucion.cancelada = true
+            errores += 1
+            setArchivos((previos) =>
+              previos.map((archivo) =>
+                archivo.id === item.id
+                  ? { ...archivo, estado: 'error', error: MENSAJE_CANCELACION }
+                  : archivo,
+              ),
+            )
+            break
+          }
+
           errores += 1
           if (error?.status === 0 || error?.status === 503) falloCritico = true
 
@@ -252,27 +313,48 @@ function AgentPage() {
             ),
           )
         } finally {
-          setResumen({ total: validos.length, completados, errores })
+          ejecucion.archivoActivoId = null
+          if (ejecucionRef.current === ejecucion) {
+            setResumen({ total: validos.length, completados, errores })
+          }
         }
       }
     } finally {
-      setArchivoActivoId(null)
-      setFase('complete')
-      procesandoRef.current = false
+      if (ejecucionRef.current === ejecucion) {
+        setArchivoActivoId(null)
+        setFase(ejecucion.cancelada ? 'cancelled' : 'complete')
+        setCancelando(false)
+        procesandoRef.current = false
 
-      if (completados > 0 && errores === 0) {
-        setEstadoAgente('operativo')
-      } else if (completados > 0) {
-        setEstadoAgente('error')
-      } else if (falloCritico) {
-        setEstadoAgente('no-disponible')
-      } else {
-        setEstadoAgente('error')
+        if (ejecucion.cancelada) {
+          setEstadoAgente('cancelado')
+        } else if (completados > 0 && errores === 0) {
+          setEstadoAgente('operativo')
+        } else if (completados > 0) {
+          setEstadoAgente('error')
+        } else if (falloCritico) {
+          setEstadoAgente('no-disponible')
+        } else {
+          setEstadoAgente('error')
+        }
+
+        ejecucionRef.current = null
+
+        if (!ejecucion.cancelada || completados > 0) {
+          cargarRegistros({ force: true })
+        }
       }
-
-      cargarRegistros()
     }
   }
+
+  const detenerProcesamiento = useCallback(() => {
+    const ejecucion = ejecucionRef.current
+    if (!ejecucion || ejecucion.cancelada) return
+
+    ejecucion.cancelada = true
+    setCancelando(true)
+    ejecucion.controller.abort()
+  }, [])
 
   const reintentarFallidos = () => {
     if (procesandoRef.current) return
@@ -312,7 +394,7 @@ function AgentPage() {
   }
 
   const verResultado = useCallback((resultado, contexto = {}) => {
-    if (!resultado) return
+    if (!resultado || fase === 'cancelled') return
     setResultadoClinico(construirResultadoClinico(resultado, contexto))
     setVista('resultado')
 
@@ -327,13 +409,13 @@ function AgentPage() {
         block: 'start',
       })
     })
-  }, [])
+  }, [fase])
 
   const volverAlAgente = useCallback(() => {
     setVista('agente')
     setResultadoClinico(null)
     enfocarTitulo(
-      fase === 'processing' || fase === 'complete'
+      fase === 'processing' || fase === 'complete' || fase === 'cancelled'
         ? 'agent-analysis-title'
         : fase === 'confirm'
           ? 'agent-confirm-title'
@@ -355,11 +437,13 @@ function AgentPage() {
   const estadoPipeline =
     fase === 'processing'
       ? 'processing'
-      : fase === 'complete'
-        ? resumen.errores > 0
-          ? 'error'
-          : 'complete'
-        : 'idle'
+      : fase === 'cancelled'
+        ? 'cancelled'
+        : fase === 'complete'
+          ? resumen.errores > 0
+            ? 'error'
+            : 'complete'
+          : 'idle'
 
   return (
     <div className="agent-page">
@@ -370,7 +454,7 @@ function AgentPage() {
         cargandoHistorial={cargandoHistorial && !historialCargado}
       />
 
-      {vista === 'resultado' && resultadoClinico ? (
+      {vista === 'resultado' && resultadoClinico && fase !== 'cancelled' ? (
         <ClinicalResultPanel
           key={`${resultadoClinico.documentoId}-${resultadoClinico.fechaProcesamiento}`}
           vista={resultadoClinico}
@@ -380,12 +464,15 @@ function AgentPage() {
         />
       ) : (
         <>
-          {fase === 'processing' || fase === 'complete' ? (
+          {fase === 'processing' || fase === 'complete' || fase === 'cancelled' ? (
             <AnalysisProgressPanel
               archivos={archivos}
               archivoActivoId={archivoActivoId}
               fase={fase}
               resumen={resumen}
+              onDetener={detenerProcesamiento}
+              cancelando={cancelando}
+              mensajeCancelacion={MENSAJE_CANCELACION}
               onNuevaSeleccion={nuevaSeleccion}
               onReintentarFallidos={reintentarFallidos}
               onVerResultado={verResultado}

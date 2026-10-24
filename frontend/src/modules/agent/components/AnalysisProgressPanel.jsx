@@ -1,6 +1,7 @@
 import AgentFileIcon from './AgentFileIcon'
 import AgentProcessingAnimation from './AgentProcessingAnimation'
 import agenteFinal from '../../../shared/assets/Agente_Procesamiento-Final.jpeg'
+import agenteError from '../../../shared/assets/Agente_Procesamiento-Final_Error.jpeg'
 import { formatearBytes } from '../utils/agentFiles'
 
 const ESTADOS = {
@@ -10,16 +11,20 @@ const ESTADOS = {
   error: { texto: 'Error', tono: 'danger' },
 }
 
-function CompleteVisual({ todoFallido, conIncidencias }) {
+function CompleteVisual({ todoFallido, conIncidencias, cancelado }) {
   if (todoFallido) {
     return (
       <div className="agent-complete-visual is-error" aria-hidden="true">
-        <span className="agent-complete-visual__icon">
-          <svg viewBox="0 0 32 32" fill="none">
-            <path d="M16 7v11M16 23.5v.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-          </svg>
+        <img
+          className="agent-complete-visual__image"
+          src={agenteError}
+          alt=""
+          draggable="false"
+          decoding="async"
+        />
+        <span className="agent-complete-visual__label">
+          {cancelado ? 'Procesamiento cancelado' : 'Procesamiento no completado'}
         </span>
-        <span className="agent-complete-visual__label">Sin resultados</span>
       </div>
     )
   }
@@ -45,11 +50,15 @@ function AnalysisProgressPanel({
   archivoActivoId,
   fase,
   resumen,
+  onDetener,
+  cancelando = false,
+  mensajeCancelacion = 'Se canceló la espera de la respuesta por solicitud del usuario. El servidor puede continuar el procesamiento.',
   onNuevaSeleccion,
   onReintentarFallidos,
   onVerResultado,
 }) {
-  const finalizado = fase === 'complete'
+  const cancelado = fase === 'cancelled'
+  const finalizado = fase === 'complete' || cancelado
   const total = resumen?.total || archivos.length
   const completados = resumen?.completados ?? archivos.filter((item) => item.estado === 'completed').length
   const errores = resumen?.errores ?? archivos.filter((item) => item.estado === 'error').length
@@ -58,20 +67,21 @@ function AnalysisProgressPanel({
   const activo =
     archivos.find((item) => item.id === archivoActivoId) ||
     archivos.find((item) => item.estado === 'processing')
-  const todoFallido = finalizado && completados === 0 && errores > 0
-  const conIncidencias = finalizado && errores > 0
+  const todoFallido = finalizado && (cancelado || (completados === 0 && errores > 0))
+  const conIncidencias = finalizado && !cancelado && errores > 0
   const archivoFinal = finalizado
     ? [...archivos]
         .reverse()
         .find((item) => item.estado === 'completed' || item.estado === 'error') || null
     : null
   const archivoMostrado = activo || archivoFinal
-  const itemResultadoFinal = finalizado
+  const itemResultadoFinal = finalizado && !cancelado
     ? [...archivos]
         .reverse()
         .find((item) => item.estado === 'completed' && item.resultado) || null
     : null
   const resultadoFinal = itemResultadoFinal?.resultado || null
+  const etiquetaLote = cancelado ? 'Lote cancelado' : 'Lote finalizado'
 
   const contextoResultado = (item) => ({
     archivo: item?.archivo,
@@ -83,17 +93,21 @@ function AnalysisProgressPanel({
 
   const titulo = !finalizado
     ? 'Analizando documento clínico'
-    : todoFallido
-      ? 'No se pudo completar el análisis'
-      : conIncidencias
-        ? 'Análisis finalizado con incidencias'
-        : 'Análisis finalizado'
+    : cancelado
+      ? 'Procesamiento cancelado'
+      : todoFallido
+        ? 'No se pudo completar el análisis'
+        : conIncidencias
+          ? 'Análisis finalizado con incidencias'
+          : 'Análisis finalizado'
 
   const descripcion = !finalizado
     ? 'El agente MediFlow está procesando la información del archivo.'
-    : todoFallido
-      ? 'Ningún documento del lote pudo completarse. Revisa los mensajes y vuelve a intentarlo.'
-      : `${completados} de ${total} ${total === 1 ? 'documento analizado' : 'documentos analizados'} correctamente.`
+    : cancelado
+      ? mensajeCancelacion
+      : todoFallido
+        ? 'Ningún documento del lote pudo completarse. Revisa los mensajes y vuelve a intentarlo.'
+        : `${completados} de ${total} ${total === 1 ? 'documento analizado' : 'documentos analizados'} correctamente.`
 
   return (
     <section className="agent-card agent-analysis" aria-labelledby="agent-analysis-title">
@@ -103,24 +117,28 @@ function AnalysisProgressPanel({
           <h2 id="agent-analysis-title" tabIndex={-1} aria-live="polite">{titulo}</h2>
           <p>{descripcion}</p>
         </div>
-        <span className={`agent-analysis__badge${finalizado ? ' is-complete' : ''}`}>
+        <span className={`agent-analysis__badge${cancelado ? ' is-cancelled' : finalizado ? ' is-complete' : ''}`}>
           <span className="agent-analysis__badge-dot" aria-hidden="true" />
-          {finalizado ? 'Finalizado' : 'En curso'}
+          {cancelado ? 'Cancelado' : finalizado ? 'Finalizado' : 'En curso'}
         </span>
       </div>
 
       <div className="agent-analysis__grid">
-        <div className={`agent-analysis__visual${finalizado ? ' is-complete' : ''}`}>
+        <div className={`agent-analysis__visual${finalizado ? ' is-complete' : ''}${cancelado ? ' is-cancelled' : ''}`}>
           <div className="agent-analysis__media">
             {finalizado ? (
-              <CompleteVisual todoFallido={todoFallido} conIncidencias={conIncidencias} />
+              <CompleteVisual
+                todoFallido={todoFallido}
+                conIncidencias={conIncidencias}
+                cancelado={cancelado}
+              />
             ) : (
               <AgentProcessingAnimation mensaje="Procesando documento clínico" />
             )}
           </div>
           <div className="agent-analysis__visual-copy">
             <span>{finalizado ? 'Estado del lote' : 'Documento activo'}</span>
-            <strong>{archivoMostrado?.archivo?.name || (finalizado ? 'Lote finalizado' : 'Preparando archivo')}</strong>
+            <strong>{archivoMostrado?.archivo?.name || (finalizado ? etiquetaLote : 'Preparando archivo')}</strong>
             <small>{finalizado ? descripcion : 'La animación representa el procesamiento en curso.'}</small>
           </div>
         </div>
@@ -162,7 +180,7 @@ function AnalysisProgressPanel({
                   <span className={`agent-queue-row__status agent-queue-row__status--${estado.tono}`}>
                     {estado.texto}
                   </span>
-                  {item.estado === 'completed' && item.resultado && (
+                  {!cancelado && item.estado === 'completed' && item.resultado && (
                     <button
                       type="button"
                       className="agent-queue-row__action"
@@ -177,7 +195,17 @@ function AnalysisProgressPanel({
           </ul>
 
           <div className="agent-analysis__actions">
-            {finalizado && (
+            {!finalizado && (
+              <button
+                type="button"
+                className="agent-button agent-button--danger"
+                onClick={onDetener}
+                disabled={cancelando}
+              >
+                {cancelando ? 'Deteniendo…' : 'Detener procesamiento'}
+              </button>
+            )}
+            {finalizado && !cancelado && (
               <>
                 {errores > 0 && (
                   <button
@@ -204,6 +232,26 @@ function AnalysisProgressPanel({
                     Ver resultados
                   </button>
                 )}
+              </>
+            )}
+            {cancelado && (
+              <>
+                {errores > 0 && (
+                  <button
+                    type="button"
+                    className="agent-button agent-button--secondary"
+                    onClick={onReintentarFallidos}
+                  >
+                    Reintentar fallidos
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="agent-button agent-button--primary"
+                  onClick={onNuevaSeleccion}
+                >
+                  Analizar otros documentos
+                </button>
               </>
             )}
           </div>

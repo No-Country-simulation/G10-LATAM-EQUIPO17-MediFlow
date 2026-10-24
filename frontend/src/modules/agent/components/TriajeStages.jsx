@@ -31,6 +31,7 @@ const ESTADOS = {
   processing: { texto: 'En curso', tono: 'busy', nota: 'El servicio no reporta el avance por etapa durante el procesamiento.' },
   complete: { texto: 'Completado', tono: 'ok', nota: 'El pipeline completó el procesamiento del lote.' },
   error: { texto: 'Con incidencias', tono: 'warning', nota: 'El pipeline no pudo confirmarse para todos los documentos del lote.' },
+  cancelled: { texto: 'Cancelado', tono: 'warning', nota: 'Se canceló la espera de la respuesta en la interfaz. El servidor puede continuar el procesamiento.' },
 }
 
 function CheckIcon() {
@@ -51,7 +52,9 @@ function TriajeStages({ estado = 'idle' }) {
       ? 'Sin detalle'
       : estado === 'error'
         ? 'No confirmado'
-        : 'Pendiente'
+        : estado === 'cancelled'
+          ? 'Cancelado'
+          : 'Pendiente'
 
   return (
     <section className="agent-card agent-pipeline" aria-labelledby="agent-pipeline-title">

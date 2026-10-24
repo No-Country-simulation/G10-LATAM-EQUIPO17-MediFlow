@@ -22,7 +22,7 @@ function AdminDashboardPage() {
   useEffect(() => {
     let activo = true
 
-    cargarResumenAdmin()
+    cargarResumenAdmin({ force: refreshKey > 0 })
       .then((datos) => {
         if (!activo) return
         setResumen(datos)

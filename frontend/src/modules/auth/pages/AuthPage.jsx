@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AuthVisualPanel from '../components/AuthVisualPanel'
 import LoginForm from '../components/LoginForm'
 import RegisterForm from '../components/RegisterForm'
@@ -80,7 +80,7 @@ function AuthPage({ initialTab = 'login' }) {
           </header>
 
           <div className="auth-card">
-            <a className="auth-card__back" href="/">
+            <Link className="auth-card__back" to="/">
               <svg
                 width="16"
                 height="16"
@@ -98,7 +98,7 @@ function AuthPage({ initialTab = 'login' }) {
                 />
               </svg>
               Volver al inicio
-            </a>
+            </Link>
             <h2 className="auth-card__title">
               {tab === 'login' ? 'Bienvenido de nuevo' : 'Crear cuenta'}
             </h2>

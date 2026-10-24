@@ -42,8 +42,19 @@ function DocumentsPage() {
   }, [estadoFiltro])
 
   const handleEstado = (valor) => {
-    setCargando(true)
+    if (valor === estadoFiltro) return
+
     setEstadoFiltro(valor)
+    setSeleccionado(null)
+
+    if (valor === 'todos') {
+      setDocumentos([])
+      setError('')
+      setCargando(false)
+      return
+    }
+
+    setCargando(true)
   }
 
   const visibles = documentos.filter((documento) => {

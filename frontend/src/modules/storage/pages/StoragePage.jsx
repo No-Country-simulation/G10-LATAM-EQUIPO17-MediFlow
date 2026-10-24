@@ -52,7 +52,7 @@ function StoragePage() {
   const solicitudDocumentos = useRef(0)
   const solicitudMetadata = useRef(0)
 
-  const cargarDocumentos = useCallback(async (estadoActual, prefijoActual = '', limiteActual = 50) => {
+  const cargarDocumentos = useCallback(async (estadoActual, prefijoActual = '', limiteActual = 50, { force = false } = {}) => {
     const solicitudActual = ++solicitudDocumentos.current
     setCargandoDocumentos(true)
     setErrorDocumentos('')
@@ -61,7 +61,7 @@ function StoragePage() {
     solicitudMetadata.current += 1
 
     try {
-      const datos = await listarDocumentos(estadoActual, prefijoActual, limiteActual)
+      const datos = await listarDocumentos(estadoActual, prefijoActual, limiteActual, { force })
       if (solicitudActual !== solicitudDocumentos.current) return
       setDocumentos(Array.isArray(datos) ? [...datos].sort((a, b) => {
         const fechaA = Date.parse(a.creado)
@@ -77,14 +77,14 @@ function StoragePage() {
     }
   }, [])
 
-  const cargar = useCallback(async (estadoActual = 'recibido', limiteActual = 50) => {
+  const cargar = useCallback(async (estadoActual = 'recibido', limiteActual = 50, { force = false } = {}) => {
     setCargando(true)
     try {
-      const datos = await verificarSaludStorage()
+      const datos = await verificarSaludStorage({ force })
       setEstado(datos)
       setError('')
       setUltimaComprobacion(new Date())
-      await cargarDocumentos(estadoActual, '', limiteActual)
+      await cargarDocumentos(estadoActual, '', limiteActual, { force })
     } catch (err) {
       setUltimaComprobacion(new Date())
       setError(mensajeErrorStorage(err, 'conexión'))
@@ -142,11 +142,11 @@ function StoragePage() {
   }
 
   const actualizarDocumentos = () => {
-    cargarDocumentos(estadoSeleccionado, prefijo.trim(), limite)
+    cargarDocumentos(estadoSeleccionado, prefijo.trim(), limite, { force: true })
   }
 
   const handleReintentar = () => {
-    cargar(estadoSeleccionado, limite)
+    cargar(estadoSeleccionado, limite, { force: true })
   }
 
   const seleccionarDocumento = async (documento) => {

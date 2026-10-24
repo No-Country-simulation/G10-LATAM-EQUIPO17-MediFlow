@@ -78,9 +78,19 @@ function cerrarSesionExpirada() {
   if (window.location.pathname !== '/login') window.location.assign('/login')
 }
 
+function crearErrorAborto() {
+  if (typeof DOMException !== 'undefined') {
+    return new DOMException('Solicitud cancelada', 'AbortError')
+  }
+
+  const error = new Error('Solicitud cancelada')
+  error.name = 'AbortError'
+  return error
+}
+
 export async function apiClient(
   ruta,
-  { metodo = 'GET', body, query, reintentar = true } = {},
+  { metodo = 'GET', body, query, reintentar = true, signal } = {},
 ) {
   const url = new URL(`${API_BASE_URL}${ruta}`)
 
@@ -99,6 +109,7 @@ export async function apiClient(
   const esFormData = body instanceof FormData
 
   const config = { method: metodo, headers }
+  if (signal) config.signal = signal
   if (body !== undefined) {
     if (!esFormData) {
       headers['Content-Type'] = 'application/json'
@@ -111,7 +122,8 @@ export async function apiClient(
   let response
   try {
     response = await fetch(url.toString(), config)
-  } catch {
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
     throw new ApiError(0, 'No se pudo conectar con el servidor')
   }
 
@@ -122,10 +134,13 @@ export async function apiClient(
     const rutasSinRefresh = ['/auth/login', '/auth/registro', '/auth/refresh', '/auth/logout']
     const puedeRenovar = response.status === 401 && token && reintentar && !rutasSinRefresh.includes(ruta)
     if (puedeRenovar) {
+      if (signal?.aborted) throw crearErrorAborto()
+
       try {
         await renovarTokens()
-        return apiClient(ruta, { metodo, body, query, reintentar: false })
-      } catch {
+        return apiClient(ruta, { metodo, body, query, reintentar: false, signal })
+      } catch (error) {
+        if (error?.name === 'AbortError') throw error
         cerrarSesionExpirada()
       }
     }

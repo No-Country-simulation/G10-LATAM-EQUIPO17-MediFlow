@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import MediFlowLogo from '../../../shared/ui/MediFlowLogo'
 import './LandingHeader.css'
 
@@ -36,16 +37,16 @@ function LandingHeader() {
             </li>
           ))}
           <li className="landing-nav__mobile-action">
-            <a className="landing-nav__login" href="/login">
+            <Link className="landing-nav__login" to="/login">
               Iniciar sesión
-            </a>
+            </Link>
           </li>
         </ul>
 
         <div className="landing-nav__actions">
-          <a className="landing-nav__login" href="/login">
+          <Link className="landing-nav__login" to="/login">
             Iniciar sesión
-          </a>
+          </Link>
           <button
             type="button"
             className="landing-nav__toggle"

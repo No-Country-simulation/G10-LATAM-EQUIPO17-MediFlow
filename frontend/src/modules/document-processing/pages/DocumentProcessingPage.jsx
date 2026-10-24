@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import DocumentUploader from '../components/DocumentUploader.jsx'
 import ProcessingPipeline from '../components/ProcessingPipeline.jsx'
 import ProcessingResult from '../components/ProcessingResult.jsx'
@@ -54,11 +55,11 @@ function DocumentProcessingPage() {
   return (
     <main className="document-page">
       <header className="document-header">
-        <a className="document-brand" href="/" aria-label="MediFlow, volver al inicio">
+        <Link className="document-brand" to="/" aria-label="MediFlow, volver al inicio">
           <span className="document-brand__mark" aria-hidden="true">+</span>
           <span>Medi<span>Flow</span></span>
-        </a>
-        <a className="document-back" href="/">Volver al inicio</a>
+        </Link>
+        <Link className="document-back" to="/">Volver al inicio</Link>
       </header>
 
       <div className="document-shell">

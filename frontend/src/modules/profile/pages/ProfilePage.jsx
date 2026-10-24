@@ -6,6 +6,7 @@ import ProfileCard from '../components/ProfileCard'
 import { getRol, getSession, ROLES, updateSession } from '../../../app/session'
 import {
   guardarPerfilGuardado,
+  invalidarPerfil,
   obtenerPerfil,
   obtenerPerfilGuardado,
 } from '../services/profileService'
@@ -75,6 +76,7 @@ function ProfilePage() {
 
     guardarPerfilGuardado(perfil.id, cambios)
     updateSession({ nombre: cambios.nombre, email: cambios.email })
+    invalidarPerfil()
     setPerfil(perfilActualizado)
     setDrawerAbierto(false)
   }, [perfil])

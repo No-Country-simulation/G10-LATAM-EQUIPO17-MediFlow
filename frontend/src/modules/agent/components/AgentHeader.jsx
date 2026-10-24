@@ -26,6 +26,11 @@ const ESTADOS = {
     tono: 'danger',
     detalle: 'El servicio de análisis no respondió.',
   },
+  cancelado: {
+    etiqueta: 'Procesamiento cancelado',
+    tono: 'warning',
+    detalle: 'Se canceló la espera de la respuesta. El servidor puede continuar el procesamiento.',
+  },
   desconectado: {
     etiqueta: 'Desconectado',
     tono: 'danger',

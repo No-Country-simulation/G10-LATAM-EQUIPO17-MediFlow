@@ -1,3 +1,5 @@
+import { clearQueryCache, setQueryCacheScope } from '../shared/api/queryCache'
+
 const SESSION_KEY = 'mediflow.session'
 
 export const ROLES = Object.freeze({
@@ -22,17 +24,23 @@ export function getSession() {
   }
 }
 
-export function saveSession(sesion) {
+export function saveSession(sesion, { actualizarCache = true } = {}) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(sesion))
+
+  if (actualizarCache) {
+    setQueryCacheScope(sesion?.email || 'anon')
+  }
 }
 
 export function updateSession(cambios) {
   const actual = getSession() || {}
-  saveSession({ ...actual, ...cambios })
+  saveSession({ ...actual, ...cambios }, { actualizarCache: false })
 }
 
 export function clearSession() {
   localStorage.removeItem(SESSION_KEY)
+  clearQueryCache()
+  setQueryCacheScope('anon')
 }
 
 export function getRol() {
@@ -42,4 +50,8 @@ export function getRol() {
 export function getUsuario() {
   const sesion = getSession()
   return sesion ? { nombre: sesion.nombre, email: sesion.email, rol: sesion.rol } : null
+}
+
+if (typeof localStorage !== 'undefined') {
+  setQueryCacheScope(getSession()?.email || 'anon')
 }
