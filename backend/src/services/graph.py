@@ -68,6 +68,7 @@ async def procesar_solicitud_triaje(
         datos_extraidos=respuesta["datos_extraidos"],
         decision_enrutamiento=respuesta["decision_enrutamiento"],
         almacenamiento_oci=respuesta["almacenamiento_oci"],
+        resumen=respuesta["resumen"]
     )
 
 

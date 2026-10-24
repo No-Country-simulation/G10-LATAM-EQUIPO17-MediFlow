@@ -19,6 +19,7 @@ class StatusTriaje(TypedDict, total=False):
     nombre_archivo: str | None
     clasificacion: ClasificacionDocumento | None 
     datos_extraidos: DatosExtraidos | None 
+    resumen: str | None
     decision_enrutamiento: DecisionEnrutamiento | None 
     almacenamiento_oci: AlmacenamientoOCI | None 
 
@@ -27,6 +28,10 @@ class SalidaAgenteExtractor(BaseModel):
         ..., description="Clasificación, tipo de documento y score de confianza"
     )
     datos_extraidos: DatosExtraidos = Field(
+        ..., description="Datos clínicos, del paciente y del médico solicitante extraídos del documento"
+    )
+    resumen: str = Field(
+        ..., description="Resumen clínico y de triaje consolidado, integrando la prioridad, especialidad y hallazgos principales."
     )
 
 class ContenidoImagen(BaseModel):

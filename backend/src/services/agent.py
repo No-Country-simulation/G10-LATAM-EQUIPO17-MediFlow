@@ -184,6 +184,7 @@ def extraer_datos_triaje(state: StatusTriaje) -> dict:
     return {
         "clasificacion": informacion_extraida.clasificacion,
         "datos_extraidos": informacion_extraida.datos_extraidos,
+        "resumen": informacion_extraida.resumen,
     }
 
 
@@ -192,6 +193,7 @@ async def enrutar_triaje(state: StatusTriaje)-> dict:
     solicitud = state["solicitud"]
     clasificacion = state["clasificacion"]
     datos_extraidos = state["datos_extraidos"]
+    resumen = state["resumen"]
     archivo_bytes = state["archivo_bytes"]
     nombre_archivo = state["nombre_archivo"]
     es_texto = state["es_texto"]
@@ -210,7 +212,8 @@ async def enrutar_triaje(state: StatusTriaje)-> dict:
             solicitud=solicitud,
             clasificacion=clasificacion,
             datos=datos_extraidos,
-            decision=decision_enrutamiento
+            decision=decision_enrutamiento,
+            resumen=resumen
         )
 
         ruta_documento = None

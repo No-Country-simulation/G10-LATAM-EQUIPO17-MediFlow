@@ -95,6 +95,7 @@ class RespuestaTriaje(BaseModel):
     datos_extraidos: DatosExtraidos
     decision_enrutamiento: DecisionEnrutamiento
     almacenamiento_oci: AlmacenamientoOCI
+    resumen: str 
 
 
 # --- Metadata OCI ---
@@ -109,6 +110,7 @@ class MetadataDocumento(BaseModel):
     medico_solicitante: str | None = None
     diagnostico_principal: str | None = None
     cie10: str | None = None
+    resumen: str | None
     fecha_recepcion: datetime = Field(default_factory=datetime.utcnow)
     destino_enrutamiento: str | None = None
 
@@ -134,6 +136,7 @@ class MetadataDocumento(BaseModel):
         clasificacion: ClasificacionDocumento,
         datos: DatosExtraidos,
         decision: DecisionEnrutamiento,
+        resumen: str,
     ) -> "MetadataDocumento":
         """Crea MetadataDocumento extrayendo la información directamente de los modelos del triaje."""
         return cls(
@@ -147,6 +150,7 @@ class MetadataDocumento(BaseModel):
             diagnostico_principal=datos.diagnostico_principal,
             cie10=datos.cie10_sugerido,
             destino_enrutamiento=decision.destino_principal,
+            resumen=resumen,
         )
 
 
