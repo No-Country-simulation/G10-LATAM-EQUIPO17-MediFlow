@@ -13,5 +13,18 @@ export function listarDocumentos({ estado, prefijo, limite = 50, force = false }
 }
 
 export function obtenerDocumento(bucket, rutaObjeto) {
-  return apiClient(`/storage/documentos/${bucket}/${rutaObjeto}`)
+  const rutaCodificada = rutaObjeto.split('/').map(encodeURIComponent).join('/')
+  return fetchQuery(
+    queryKeys.storageMetadata(bucket, rutaObjeto),
+    () => apiClient(`/storage/documentos/${encodeURIComponent(bucket)}/${rutaCodificada}`),
+    { ttl: queryTTL.operativo },
+  )
+}
+
+export function listarHistorialDocumentos({ force = false } = {}) {
+  return fetchQuery(
+    queryKeys.registrosTriaje,
+    () => apiClient('/triaje/registros'),
+    { force, ttl: queryTTL.operativo },
+  )
 }

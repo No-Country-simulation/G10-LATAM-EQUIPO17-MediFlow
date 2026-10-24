@@ -35,6 +35,7 @@ const ACCESOS = {
     { path: '/documents', etiqueta: 'Ver documentos', descripcion: 'Consultar el repositorio clínico' },
   ],
   [ROLES.PACIENTE]: [
+    { path: '/documents', etiqueta: 'Mis documentos', descripcion: 'Consulta tu historial de procesos completados' },
     { path: '/profile', etiqueta: 'Mi perfil', descripcion: 'Revisa tus datos de acceso' },
   ],
 }

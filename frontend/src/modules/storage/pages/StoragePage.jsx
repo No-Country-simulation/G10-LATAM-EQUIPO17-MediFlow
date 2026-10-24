@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import OciHealthCard from '../components/OciHealthCard'
 import { listarDocumentos, obtenerMetadataDocumento, verificarSaludStorage } from '../services/storageService'
 import './storage.css'
@@ -51,6 +51,7 @@ function StoragePage() {
   const filtroInicializado = useRef(false)
   const solicitudDocumentos = useRef(0)
   const solicitudMetadata = useRef(0)
+  const accionSeleccionada = useRef(null)
 
   const cargarDocumentos = useCallback(async (estadoActual, prefijoActual = '', limiteActual = 50, { force = false } = {}) => {
     const solicitudActual = ++solicitudDocumentos.current
@@ -161,6 +162,7 @@ function StoragePage() {
       setErrorMetadata('No se pudo identificar el bucket del documento. Vuelve a comprobar la conexión con OCI.')
       setDocumentoSeleccionado(documento)
       setMetadata(null)
+      setCargandoMetadata(false)
       return
     }
 
@@ -262,7 +264,10 @@ function StoragePage() {
             </div>
             <div className="storage-search__field">
               <label htmlFor="storage-format">Formato de archivo</label>
-              <select id="storage-format" value={formato} onChange={(event) => setFormato(event.target.value)}>
+              <select id="storage-format" value={formato} onChange={(event) => {
+                cerrarMetadata()
+                setFormato(event.target.value)
+              }}>
                 <option value="todos">Todos los formatos</option>
                 <option value="PDF">PDF</option>
                 <option value="IMG">Imágenes (JPG, PNG)</option>
@@ -290,21 +295,57 @@ function StoragePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {documentosVisibles.map((documento) => (
-                      <tr key={documento.nombre}>
-                        <td>
-                          <span className="storage-table__file">
-                            <span className="storage-table__type" aria-hidden="true">{tipoArchivo(documento.nombre)}</span>
-                            <span className="storage-table__name">{documento.nombre}</span>
-                          </span>
-                        </td>
-                        <td>
-                          <button type="button" className="storage-table__action" onClick={() => seleccionarDocumento(documento)}>
-                            Ver metadata
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {documentosVisibles.map((documento) => {
+                      const seleccionado = documentoSeleccionado?.nombre === documento.nombre
+                      return (
+                        <Fragment key={documento.nombre}>
+                          <tr className={seleccionado ? 'storage-table__selected' : undefined}>
+                            <td>
+                              <span className="storage-table__file">
+                                <span className="storage-table__type" aria-hidden="true">{tipoArchivo(documento.nombre)}</span>
+                                <span className="storage-table__name">{documento.nombre}</span>
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                ref={seleccionado ? accionSeleccionada : undefined}
+                                className="storage-table__action"
+                                aria-expanded={seleccionado}
+                                aria-controls={seleccionado ? 'storage-metadata-detail' : undefined}
+                                onClick={() => seleccionado ? cerrarMetadata() : seleccionarDocumento(documento)}
+                              >
+                                {seleccionado ? 'Ocultar metadata' : 'Ver metadata'}
+                              </button>
+                            </td>
+                          </tr>
+                          {seleccionado && (
+                            <tr className="storage-table__detail">
+                              <td colSpan={2}>
+                                <section id="storage-metadata-detail" className="storage-metadata" aria-labelledby="metadata-title">
+                                  <div className="storage-section__heading">
+                                    <div>
+                                      <span className="storage-page__kicker">Detalle del documento</span>
+                                      <h2 id="metadata-title">Metadata</h2>
+                                    </div>
+                                    <button type="button" className="storage-metadata__close" onClick={() => {
+                                      accionSeleccionada.current?.focus()
+                                      cerrarMetadata()
+                                    }}>
+                                      Cerrar
+                                    </button>
+                                  </div>
+                                  <p className="storage-metadata__path">{documento.nombre}</p>
+                                  {cargandoMetadata && <p className="storage-feedback" role="status">Consultando metadata…</p>}
+                                  {!cargandoMetadata && errorMetadata && <p className="storage-feedback is-error" role="alert">{errorMetadata}</p>}
+                                  {!cargandoMetadata && metadata && <MetadataDetails datos={metadata} />}
+                                </section>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -322,23 +363,6 @@ function StoragePage() {
         </section>
       )}
 
-      {documentoSeleccionado && (
-        <section className="storage-metadata" aria-labelledby="metadata-title">
-          <div className="storage-section__heading">
-            <div>
-              <span className="storage-page__kicker">Detalle del documento</span>
-              <h2 id="metadata-title">Metadata</h2>
-            </div>
-            <button type="button" className="storage-metadata__close" onClick={cerrarMetadata}>
-              Cerrar
-            </button>
-          </div>
-          <p className="storage-metadata__path">{documentoSeleccionado.nombre}</p>
-          {cargandoMetadata && <p className="storage-feedback">Consultando metadata…</p>}
-          {!cargandoMetadata && errorMetadata && <p className="storage-feedback is-error" role="alert">{errorMetadata}</p>}
-          {!cargandoMetadata && metadata && <MetadataDetails datos={metadata} />}
-        </section>
-      )}
     </div>
   )
 }

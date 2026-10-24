@@ -42,7 +42,7 @@ function AppRouter() {
           <Route
             path="/documents"
             element={
-              <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO]}>
+              <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE]}>
                 <DocumentsPage />
               </RequireRole>
             }

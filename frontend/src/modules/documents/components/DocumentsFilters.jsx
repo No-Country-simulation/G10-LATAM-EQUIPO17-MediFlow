@@ -1,7 +1,4 @@
-import Select from '../../../shared/ui/Select'
-import { ESTADO_OPCIONES } from '../types/estados'
-
-function DocumentsFilters({ estadoFiltro, busqueda, onEstado, onBusqueda }) {
+function DocumentsFilters({ busqueda, onBusqueda }) {
   return (
     <div className="doc-filters">
       <label className="doc-filters__search">
@@ -13,19 +10,10 @@ function DocumentsFilters({ estadoFiltro, busqueda, onEstado, onBusqueda }) {
           type="search"
           value={busqueda}
           onChange={(event) => onBusqueda(event.target.value)}
-          placeholder="Buscar documento"
-          aria-label="Buscar por identificador de documento"
+          placeholder="Buscar por archivo o identificador"
+          aria-label="Buscar por nombre de archivo o identificador"
         />
       </label>
-
-      <Select
-        id="filtro-estado-doc"
-        name="filtro-estado-doc"
-        value={estadoFiltro}
-        onChange={(event) => onEstado(event.target.value)}
-        options={ESTADO_OPCIONES}
-        ariaLabel="Filtrar documentos por estado"
-      />
     </div>
   )
 }

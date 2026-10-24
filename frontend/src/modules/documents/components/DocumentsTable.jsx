@@ -1,6 +1,11 @@
-import DocumentStateBadge from './DocumentStateBadge'
+function formatearFecha(valor) {
+  const fecha = new Date(valor)
+  return valor && !Number.isNaN(fecha.getTime())
+    ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'medium', timeStyle: 'short' }).format(fecha)
+    : 'Fecha no disponible'
+}
 
-function DocumentsTable({ documentos, onSeleccionar, seleccionadoId }) {
+function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArchivo }) {
   if (documentos.length === 0) return null
 
   return (
@@ -8,31 +13,27 @@ function DocumentsTable({ documentos, onSeleccionar, seleccionadoId }) {
       <table className="doc-table">
         <thead>
           <tr>
-            <th scope="col">Documento</th>
-            <th scope="col">Tipo</th>
-            <th scope="col">Prioridad</th>
-            <th scope="col">Estado</th>
+            <th scope="col">Archivo</th>
+            <th scope="col">Fecha</th>
+            <th scope="col">Proceso</th>
             <th scope="col"><span className="sr-only">Detalle</span></th>
           </tr>
         </thead>
         <tbody>
           {documentos.map((documento) => (
-            <tr key={documento.documento_id}>
+            <tr key={documento.id}>
               <td>
-                <strong className="doc-table__id">{documento.documento_id}</strong>
-                <span className="doc-table__meta">{documento.fecha_recepcion || '—'}</span>
+                <strong className="doc-table__id">{nombreDeArchivo(documento)}</strong>
+                <span className="doc-table__meta">Registro {documento.id}</span>
               </td>
-              <td>{documento.tipo_documento || '—'}</td>
-              <td>
-                <span className="doc-table__prioridad">{documento.nivel_prioridad || '—'}</span>
-              </td>
-              <td><DocumentStateBadge estado={documento.estado} /></td>
+              <td>{formatearFecha(documento.created_at)}</td>
+              <td><span className="doc-badge doc-badge--procesado">Completado</span></td>
               <td className="doc-table__acciones">
                 <button
                   type="button"
                   className="doc-table__btn"
                   onClick={() => onSeleccionar(documento)}
-                  aria-pressed={seleccionadoId === documento.documento_id}
+                  aria-pressed={seleccionadoId === documento.id}
                 >
                   Ver detalle
                 </button>
