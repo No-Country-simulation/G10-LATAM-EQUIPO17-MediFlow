@@ -128,15 +128,13 @@ function DocumentsPage() {
               {registros.length ? 'No hay procesos que coincidan con tu búsqueda.' : 'Aún no hay procesos completados para mostrar.'}
             </p>
           ) : (
-            <div className={seleccionado ? 'doc-page__layout is-detail-open' : 'doc-page__layout'}>
-              <div className="doc-page__list">
-                <DocumentsTable
-                  documentos={visibles}
-                  onSeleccionar={seleccionar}
-                  seleccionadoId={seleccionado?.id}
-                  nombreDeArchivo={nombreDeArchivo}
-                />
-              </div>
+            <>
+              <DocumentsTable
+                documentos={visibles}
+                onSeleccionar={seleccionar}
+                seleccionadoId={seleccionado?.id}
+                nombreDeArchivo={nombreDeArchivo}
+              />
               <DocumentDetailPanel
                 documento={seleccionado}
                 nombreDeArchivo={nombreDeArchivo}
@@ -145,7 +143,7 @@ function DocumentsPage() {
                 error={errorDetalle}
                 onClose={() => setSeleccionado(null)}
               />
-            </div>
+            </>
           )}
         </>
       )}

@@ -1,4 +1,4 @@
-import resultadosPng from '../../../shared/assets/Resultados.png'
+import informacionMetadataPng from '../../../shared/assets/Informacion_Metadata.png'
 
 const MARGEN = 48
 const ANCHO_PAGINA = 595.28
@@ -87,7 +87,7 @@ export async function generarPdfResultadoClinico(vista) {
 
   let imagenEncabezado = null
   try {
-    imagenEncabezado = await cargarImagenPng(resultadosPng)
+    imagenEncabezado = await cargarImagenPng(informacionMetadataPng)
   } catch {
     imagenEncabezado = null
   }
