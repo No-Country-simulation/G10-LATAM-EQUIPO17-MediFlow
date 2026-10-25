@@ -118,13 +118,18 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
-origins = [o.strip() for o in settings.allowed_origins.split(",")]
-usa_credenciales = "*" not in origins
+#origins = [o.strip() for o in settings.allowed_origins.split(",")]
+# usa_credenciales = "*" not in origins
+ 
+origins = [
+    "https://g10-latam-equipo-17-medi-flow.vercel.app",
+    "http://localhost:5173",  
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=usa_credenciales,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
