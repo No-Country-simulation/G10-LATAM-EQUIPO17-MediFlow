@@ -19,3 +19,4 @@ class RegistroTriaje(Base):
     comentario_medico: Mapped[str | None] = mapped_column(Text, default=None)
     fecha_asignacion: Mapped[datetime | None] = mapped_column(DateTime, default=None)
     fecha_comentario: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    eliminado_en: Mapped[datetime | None] = mapped_column(DateTime, default=None)

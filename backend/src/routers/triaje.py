@@ -293,3 +293,34 @@ async def listar_registros_asignados(
         id_medico=usuario.sub, solo_pendientes=solo_pendientes, offset=offset, limit=limit,
     )
     return {"items": registros, "total": total, "offset": offset, "limit": limit}
+
+
+@router.delete(
+    "/registros/{registro_id}",
+    summary="Eliminar registro de triaje (soft delete)",
+    description=(
+        "Marca un registro de triaje como eliminado. Solo ADMIN puede realizar esta operacion. "
+        "El registro no se elimina fisicamente de la base de datos."
+    ),
+    responses={
+        200: {"description": "Registro eliminado correctamente"},
+        404: {"description": "Registro no encontrado"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — solo ADMIN"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
+@limiter.limit("30/minute")
+async def eliminar_registro_triaje(
+    request: Request,
+    registro_id: str,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
+):
+    registro = await repositorio_triaje.find_by_id(registro_id)
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro de triaje no encontrado")
+    if registro.eliminado_en:
+        raise HTTPException(status_code=404, detail="Registro de triaje no encontrado")
+    await repositorio_triaje.soft_delete(registro)
+    return {"detail": "Registro eliminado correctamente"}

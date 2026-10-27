@@ -134,6 +134,30 @@ async def cambiar_password(
 
 
 @router.get(
+    "/usuarios/buscar",
+    summary="Buscar usuarios por nombre o email",
+    description="Busca usuarios por coincidencia parcial en nombre o email. Solo accesible para ADMIN.",
+    responses={
+        200: {"description": "Resultados de busqueda paginados"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — solo ADMIN"},
+        422: {"description": "Parametro de busqueda requerido"},
+        429: {"description": "Limite de solicitudes excedido (10/min)"},
+    },
+)
+@limiter.limit("10/minute")
+async def buscar_usuarios(
+    request: Request,
+    q: str = Query(..., min_length=1, max_length=100, description="Texto a buscar en nombre o email"),
+    offset: int = Query(default=0, ge=0, description="Registros a saltar"),
+    limit: int = Query(default=50, ge=1, le=200, description="Cantidad maxima de resultados"),
+    usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    return await auth_service.buscar_usuarios(q, offset=offset, limit=limit)
+
+
+@router.get(
     "/usuarios",
     summary="Listar todos los usuarios",
     description="Retorna la lista paginada de usuarios registrados. Solo accesible para ADMIN.",

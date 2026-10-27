@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -59,7 +60,24 @@ async def lifespan(app: FastAPI):
     if eliminados:
         logging.getLogger("mediflow").info("Tokens expirados purgados: %d", eliminados)
     await crear_admin_inicial()
+
+    async def purga_periodica():
+        while True:
+            await asyncio.sleep(3600)
+            try:
+                n = await purgar_tokens_expirados()
+                if n:
+                    logging.getLogger("mediflow").info("Purga periodica: %d tokens eliminados", n)
+            except Exception as e:
+                logging.getLogger("mediflow").error("Error en purga periodica: %s", str(e))
+
+    tarea_purga = asyncio.create_task(purga_periodica())
     yield
+    tarea_purga.cancel()
+    try:
+        await tarea_purga
+    except asyncio.CancelledError:
+        pass
 
 
 settings = get_settings()
@@ -79,11 +97,16 @@ app = FastAPI(
 
 app.state.limiter = limiter
 
-logging_cfg = logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from pythonjsonlogger.json import JsonFormatter
+
+json_handler = logging.StreamHandler()
+json_handler.setFormatter(JsonFormatter(
+    fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    rename_fields={"asctime": "timestamp", "name": "logger", "levelname": "level"},
+))
+logging.root.handlers = [json_handler]
+logging.root.setLevel(logging.INFO)
 
 app.add_middleware(AuditMiddleware)
 

@@ -176,6 +176,15 @@ class AuthService:
         }
 
 
+    async def buscar_usuarios(self, query: str, offset: int = 0, limit: int = 50) -> dict:
+        usuarios, total = await self.user_repository.search_users(query, offset=offset, limit=limit)
+        return {
+            "items": [self._to_usuario_response(u) for u in usuarios],
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
+
     async def cambiar_rol(self, usuario_id: str, admin_id: str, cambio_rol_request: CambioRolRequest) -> UsuarioResponse:
 
         if usuario_id == admin_id:

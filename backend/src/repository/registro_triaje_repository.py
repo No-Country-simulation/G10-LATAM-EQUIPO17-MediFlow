@@ -16,14 +16,16 @@ class RegistroTriajeRepository:
         return registro
 
     async def find_by_usuario(self, id_usuario: str, offset: int = 0, limit: int = 50) -> tuple[list[RegistroTriaje], int]:
+        base_filter = (RegistroTriaje.id_usuario == id_usuario) & (RegistroTriaje.eliminado_en.is_(None))
+
         total_result = await self.db.execute(
-            select(func.count()).select_from(RegistroTriaje).where(RegistroTriaje.id_usuario == id_usuario)
+            select(func.count()).select_from(RegistroTriaje).where(base_filter)
         )
         total = total_result.scalar()
 
         stmt = (
             select(RegistroTriaje)
-            .where(RegistroTriaje.id_usuario == id_usuario)
+            .where(base_filter)
             .order_by(RegistroTriaje.created_at.desc())
             .offset(offset)
             .limit(limit)
@@ -32,10 +34,20 @@ class RegistroTriajeRepository:
         return result.scalars().all(), total
 
     async def find_all(self, offset: int = 0, limit: int = 50) -> tuple[list[RegistroTriaje], int]:
-        total_result = await self.db.execute(select(func.count()).select_from(RegistroTriaje))
+        base_filter = RegistroTriaje.eliminado_en.is_(None)
+
+        total_result = await self.db.execute(
+            select(func.count()).select_from(RegistroTriaje).where(base_filter)
+        )
         total = total_result.scalar()
 
-        stmt = select(RegistroTriaje).order_by(RegistroTriaje.created_at.desc()).offset(offset).limit(limit)
+        stmt = (
+            select(RegistroTriaje)
+            .where(base_filter)
+            .order_by(RegistroTriaje.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
         result = await self.db.execute(stmt)
         return result.scalars().all(), total
 
@@ -59,7 +71,7 @@ class RegistroTriajeRepository:
     async def find_by_medico_asignado(
         self, id_medico: str, solo_pendientes: bool = False, offset: int = 0, limit: int = 50,
     ) -> tuple[list[RegistroTriaje], int]:
-        filtro = RegistroTriaje.id_medico_asignado == id_medico
+        filtro = (RegistroTriaje.id_medico_asignado == id_medico) & (RegistroTriaje.eliminado_en.is_(None))
         if solo_pendientes:
             filtro = filtro & (RegistroTriaje.comentario_medico.is_(None))
 
@@ -77,3 +89,9 @@ class RegistroTriajeRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalars().all(), total
+
+    async def soft_delete(self, registro: RegistroTriaje) -> RegistroTriaje:
+        registro.eliminado_en = datetime.now(timezone.utc)
+        await self.db.commit()
+        await self.db.refresh(registro)
+        return registro

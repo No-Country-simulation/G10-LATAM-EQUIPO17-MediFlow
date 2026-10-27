@@ -177,6 +177,7 @@ class RegistroTriajeResponse(BaseModel):
     comentario_medico: str | None = None
     fecha_asignacion: datetime | None = None
     fecha_comentario: datetime | None = None
+    eliminado_en: datetime | None = None
 
 
 class AsignacionRequest(BaseModel):

@@ -31,6 +31,19 @@ class StorageMock:
     def obtener_documento(self, bucket, ruta):
         return (b"", {"content-type": "application/pdf"})
 
+    def mover_documento(self, documento_id, ruta_objeto, bucket_origen, estado_destino):
+        from src.schemas.documento import ResultadoMovimiento, EstadoDocumento
+        estado = estado_destino if isinstance(estado_destino, EstadoDocumento) else EstadoDocumento(estado_destino)
+        return ResultadoMovimiento(
+            exito=True,
+            documento_id=documento_id,
+            bucket_origen=bucket_origen,
+            bucket_destino=f"mediflow-{estado.value}",
+            ruta_origen=ruta_objeto,
+            ruta_destino=ruta_objeto,
+            estado_nuevo=estado,
+        )
+
 
 app.dependency_overrides[get_storage] = lambda: StorageMock()
 
@@ -68,7 +81,7 @@ async def usuario_registrado(client: AsyncClient):
     resp = await client.post("/auth/registro", json={
         "nombre": "Test User",
         "email": "test@mediflow.cl",
-        "password": "password123",
+        "password": "Test@1234",
     })
     return resp.json()
 
@@ -83,7 +96,7 @@ async def usuario_admin(client: AsyncClient):
     resp = await client.post("/auth/registro", json={
         "nombre": "Admin User",
         "email": "admin@mediflow.cl",
-        "password": "password123",
+        "password": "Test@1234",
     })
     data = resp.json()
 
@@ -104,6 +117,37 @@ async def usuario_admin(client: AsyncClient):
         await session.commit()
 
     token = crear_access_token({"sub": user_id, "rol": Rol.ADMIN.value})
+    return {
+        "access_token": token,
+        "user_id": user_id,
+        "headers": {"Authorization": f"Bearer {token}"},
+    }
+
+
+@pytest_asyncio.fixture
+async def usuario_medico(client: AsyncClient):
+    resp = await client.post("/auth/registro", json={
+        "nombre": "Medico User",
+        "email": "medico@mediflow.cl",
+        "password": "Test@1234",
+    })
+    data = resp.json()
+
+    from sqlalchemy import update
+    from src.models.usuario import Usuario
+    from src.security.schemas import Rol
+    from src.security.auth import crear_access_token, verificar_token
+
+    async with session_test() as session:
+        payload = verificar_token(data["access_token"])
+        user_id = payload["sub"]
+
+        await session.execute(
+            update(Usuario).where(Usuario.id == user_id).values(rol=Rol.MEDICO)
+        )
+        await session.commit()
+
+    token = crear_access_token({"sub": user_id, "rol": Rol.MEDICO.value})
     return {
         "access_token": token,
         "user_id": user_id,

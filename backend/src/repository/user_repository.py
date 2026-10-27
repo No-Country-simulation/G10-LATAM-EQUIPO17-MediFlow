@@ -48,6 +48,14 @@ class UserRepository:
         await self.db.commit()
         return usuario
 
+    async def search_users(self, query: str, offset: int = 0, limit: int = 50) -> tuple[list[Usuario], int]:
+        filtro = Usuario.nombre.ilike(f"%{query}%") | Usuario.email.ilike(f"%{query}%")
+        total_result = await self.db.execute(select(func.count()).select_from(Usuario).where(filtro))
+        total = total_result.scalar()
+        stmt = select(Usuario).where(filtro).order_by(Usuario.created_at.desc()).offset(offset).limit(limit)
+        result = await self.db.execute(stmt)
+        return result.scalars().all(), total
+
     async def update_estado(self, usuario: Usuario, activo: bool) -> Usuario:
         usuario.activo = activo
         await self.db.commit()

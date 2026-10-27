@@ -7,7 +7,7 @@ async def test_registro_exitoso(client: AsyncClient):
     resp = await client.post("/auth/registro", json={
         "nombre": "María López",
         "email": "maria@mediflow.cl",
-        "password": "clave_segura_123",
+        "password": "Test@1234",
     })
     assert resp.status_code == 201
     data = resp.json()
@@ -21,7 +21,7 @@ async def test_registro_email_duplicado(client: AsyncClient):
     payload = {
         "nombre": "Usuario Uno",
         "email": "duplicado@mediflow.cl",
-        "password": "clave_segura_123",
+        "password": "Test@1234",
     }
     await client.post("/auth/registro", json=payload)
     resp = await client.post("/auth/registro", json=payload)
@@ -43,7 +43,7 @@ async def test_registro_email_invalido(client: AsyncClient):
     resp = await client.post("/auth/registro", json={
         "nombre": "Test",
         "email": "no-es-email",
-        "password": "clave_segura_123",
+        "password": "Test@1234",
     })
     assert resp.status_code == 422
 
@@ -53,11 +53,11 @@ async def test_login_exitoso(client: AsyncClient):
     await client.post("/auth/registro", json={
         "nombre": "Login Test",
         "email": "login@mediflow.cl",
-        "password": "clave_segura_123",
+        "password": "Test@1234",
     })
     resp = await client.post("/auth/login", json={
         "email": "login@mediflow.cl",
-        "password": "clave_segura_123",
+        "password": "Test@1234",
     })
     assert resp.status_code == 200
     assert "access_token" in resp.json()
@@ -77,7 +77,7 @@ async def test_login_password_incorrecta(client: AsyncClient):
     await client.post("/auth/registro", json={
         "nombre": "Test",
         "email": "pwd@mediflow.cl",
-        "password": "clave_correcta_123",
+        "password": "Test@1234",
     })
     resp = await client.post("/auth/login", json={
         "email": "pwd@mediflow.cl",
@@ -137,6 +137,27 @@ async def test_listar_usuarios_como_admin(client: AsyncClient, usuario_admin):
 
 
 @pytest.mark.asyncio
+async def test_listar_usuarios_paginacion(client: AsyncClient, usuario_admin):
+    resp = await client.get(
+        "/auth/usuarios",
+        params={"offset": 0, "limit": 1},
+        headers=usuario_admin["headers"],
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["limit"] == 1
+    assert len(data["items"]) <= 1
+
+    resp2 = await client.get(
+        "/auth/usuarios",
+        params={"offset": 100, "limit": 50},
+        headers=usuario_admin["headers"],
+    )
+    assert resp2.status_code == 200
+    assert resp2.json()["items"] == []
+
+
+@pytest.mark.asyncio
 async def test_listar_usuarios_como_paciente_denegado(client: AsyncClient, headers_paciente):
     resp = await client.get("/auth/usuarios", headers=headers_paciente)
     assert resp.status_code == 403
@@ -176,15 +197,15 @@ async def test_me_sin_token(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_cambiar_password(client: AsyncClient, headers_paciente):
     resp = await client.patch("/auth/password", json={
-        "password_actual": "password123",
-        "password_nueva": "nueva_clave_456",
+        "password_actual": "Test@1234",
+        "password_nueva": "Nueva@456",
     }, headers=headers_paciente)
     assert resp.status_code == 200
     assert resp.json()["detail"] == "Contraseña actualizada"
 
     resp = await client.post("/auth/login", json={
         "email": "test@mediflow.cl",
-        "password": "nueva_clave_456",
+        "password": "Nueva@456",
     })
     assert resp.status_code == 200
 
@@ -193,7 +214,7 @@ async def test_cambiar_password(client: AsyncClient, headers_paciente):
 async def test_cambiar_password_incorrecta(client: AsyncClient, headers_paciente):
     resp = await client.patch("/auth/password", json={
         "password_actual": "clave_equivocada",
-        "password_nueva": "nueva_clave_456",
+        "password_nueva": "Nueva@456",
     }, headers=headers_paciente)
     assert resp.status_code == 401
 
@@ -201,7 +222,7 @@ async def test_cambiar_password_incorrecta(client: AsyncClient, headers_paciente
 @pytest.mark.asyncio
 async def test_cambiar_password_nueva_muy_corta(client: AsyncClient, headers_paciente):
     resp = await client.patch("/auth/password", json={
-        "password_actual": "password123",
+        "password_actual": "Test@1234",
         "password_nueva": "corta",
     }, headers=headers_paciente)
     assert resp.status_code == 422
@@ -211,7 +232,7 @@ async def test_cambiar_password_nueva_muy_corta(client: AsyncClient, headers_pac
 async def test_cambiar_password_sin_auth(client: AsyncClient):
     resp = await client.patch("/auth/password", json={
         "password_actual": "cualquiera",
-        "password_nueva": "nueva_clave_456",
+        "password_nueva": "Nueva@456",
     })
     assert resp.status_code in (401, 403)
 
@@ -232,9 +253,48 @@ async def test_cambiar_estado_usuario(client: AsyncClient, usuario_admin, usuari
 
     resp = await client.post("/auth/login", json={
         "email": "test@mediflow.cl",
-        "password": "password123",
+        "password": "Test@1234",
     })
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_desactivar_y_reactivar_usuario(client: AsyncClient, usuario_admin, usuario_registrado):
+    from src.security.auth import verificar_token
+    payload = verificar_token(usuario_registrado["access_token"])
+    user_id = payload["sub"]
+
+    resp = await client.patch(
+        f"/auth/usuarios/{user_id}/estado",
+        json={"activo": False},
+        headers=usuario_admin["headers"],
+    )
+    assert resp.status_code == 200
+    assert resp.json()["activo"] is False
+
+    resp = await client.patch(
+        f"/auth/usuarios/{user_id}/estado",
+        json={"activo": True},
+        headers=usuario_admin["headers"],
+    )
+    assert resp.status_code == 200
+    assert resp.json()["activo"] is True
+
+    resp = await client.post("/auth/login", json={
+        "email": "test@mediflow.cl",
+        "password": "Test@1234",
+    })
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_desactivar_cuenta_propia_denegado(client: AsyncClient, usuario_admin):
+    resp = await client.patch(
+        f"/auth/usuarios/{usuario_admin['user_id']}/estado",
+        json={"activo": False},
+        headers=usuario_admin["headers"],
+    )
+    assert resp.status_code == 400
 
 
 @pytest.mark.asyncio

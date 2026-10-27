@@ -226,7 +226,7 @@ async def test_comentario_medico_no_asignado(client: AsyncClient, usuario_admin,
     otro_resp = await client.post("/auth/registro", json={
         "nombre": "Otro Medico",
         "email": "otro.medico@mediflow.cl",
-        "password": "password123",
+        "password": "Test@1234",
     })
     otro_data = otro_resp.json()
     from src.security.auth import verificar_token
