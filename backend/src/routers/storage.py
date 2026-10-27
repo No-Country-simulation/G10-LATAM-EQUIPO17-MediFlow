@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import Response
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import Settings, get_settings
+from src.core.database import get_db
 from src.core.exceptions import BucketNoEncontradoError, ConfiguracionOCIError, DocumentoNoEncontradoError
 from src.core.rate_limit import limiter
+from src.models import RegistroTriaje
 from src.schemas.documento import EstadoDocumento
 from src.security import requiere_rol, Rol
 from src.security.schemas import TokenPayload
@@ -99,15 +104,79 @@ async def obtener_documento(
     settings: Settings = Depends(get_settings),
     storage: MediFlowStorage = Depends(get_storage),
 ):
-    buckets_validos = {settings.bucket_recibidos, settings.bucket_procesados, settings.bucket_auditoria}
-    if bucket not in buckets_validos:
-        raise HTTPException(status_code=400, detail="Bucket no permitido")
-
-    if ".." in ruta_objeto or ruta_objeto.startswith("/"):
-        raise HTTPException(status_code=400, detail="Ruta no permitida")
+    _validar_bucket_y_ruta(bucket, ruta_objeto, settings)
 
     try:
         _, metadata = storage.obtener_documento(bucket, ruta_objeto)
         return {"bucket": bucket, "ruta": ruta_objeto, "metadata": metadata}
     except DocumentoNoEncontradoError as e:
         raise HTTPException(status_code=404, detail=e.mensaje)
+
+
+def _validar_bucket_y_ruta(bucket: str, ruta_objeto: str, settings: Settings):
+    buckets_validos = {settings.bucket_recibidos, settings.bucket_procesados, settings.bucket_auditoria}
+    if bucket not in buckets_validos:
+        raise HTTPException(status_code=400, detail="Bucket no permitido")
+    if ".." in ruta_objeto or ruta_objeto.startswith("/"):
+        raise HTTPException(status_code=400, detail="Ruta no permitida")
+
+
+async def _verificar_acceso_paciente(usuario: TokenPayload, bucket: str, ruta_objeto: str, db: AsyncSession):
+    if usuario.rol != Rol.PACIENTE:
+        return
+    resultado = await db.execute(
+        select(RegistroTriaje).where(
+            RegistroTriaje.id_usuario == usuario.sub,
+            RegistroTriaje.bucket == bucket,
+            (RegistroTriaje.ruta_documento == ruta_objeto) | (RegistroTriaje.ruta_triaje == ruta_objeto),
+        )
+    )
+    if not resultado.scalar_one_or_none():
+        raise HTTPException(status_code=403, detail="No tienes acceso a este documento")
+
+
+@router.get(
+    "/descargar/{bucket}/{ruta_objeto:path}",
+    summary="Descargar documento desde OCI",
+    description=(
+        "Descarga el contenido binario de un documento almacenado en OCI. "
+        "Los pacientes solo pueden descargar documentos asociados a sus propios triajes."
+    ),
+    responses={
+        200: {"description": "Contenido del documento", "content": {"application/octet-stream": {}}},
+        400: {"description": "Bucket no permitido o ruta invalida"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado al documento"},
+        404: {"description": "Documento no encontrado en OCI"},
+        429: {"description": "Limite de solicitudes excedido (20/min)"},
+    },
+)
+@limiter.limit("20/minute")
+async def descargar_documento(
+    request: Request,
+    bucket: str,
+    ruta_objeto: str,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.PACIENTE, Rol.MEDICO, Rol.ADMIN)),
+    settings: Settings = Depends(get_settings),
+    storage: MediFlowStorage = Depends(get_storage),
+    db: AsyncSession = Depends(get_db),
+):
+    _validar_bucket_y_ruta(bucket, ruta_objeto, settings)
+    await _verificar_acceso_paciente(usuario, bucket, ruta_objeto, db)
+
+    try:
+        contenido, _ = storage.obtener_documento(bucket, ruta_objeto)
+    except DocumentoNoEncontradoError as e:
+        raise HTTPException(status_code=404, detail=e.mensaje)
+
+    nombre_archivo = ruta_objeto.rsplit("/", 1)[-1]
+    content_type = MediFlowStorage._detectar_content_type(nombre_archivo)
+
+    return Response(
+        content=contenido,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{nombre_archivo}"',
+            "Content-Length": str(len(contenido)),
+        },
+    )

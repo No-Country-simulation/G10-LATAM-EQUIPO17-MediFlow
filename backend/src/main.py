@@ -6,9 +6,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import delete
-
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from src.core.config import get_settings
 from src.core.database import crear_tablas, async_session
@@ -118,18 +116,13 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
-#origins = [o.strip() for o in settings.allowed_origins.split(",")]
-# usa_credenciales = "*" not in origins
- 
-origins = [
-    "https://g10-latam-equipo-17-medi-flow.vercel.app",
-    "http://localhost:5173",  
-]
+origins = [o.strip() for o in settings.allowed_origins.split(",")]
+usa_credenciales = "*" not in origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=usa_credenciales,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
