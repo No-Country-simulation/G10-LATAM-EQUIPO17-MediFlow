@@ -3,7 +3,14 @@ from sqlalchemy.orm import DeclarativeBase
 from src.core.config import get_settings
 
 settings = get_settings()
-engine = create_async_engine(settings.database_url, echo=settings.debug)
+
+_engine_args = {"echo": settings.debug}
+if settings.database_url_async.startswith("postgresql"):
+    _engine_args["pool_size"] = 5
+    _engine_args["max_overflow"] = 10
+    _engine_args["pool_pre_ping"] = True
+
+engine = create_async_engine(settings.database_url_async, **_engine_args)
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 

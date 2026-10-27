@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     # DB
     database_url: str = "sqlite+aiosqlite:///./mediflow.db"
 
+    @property
+    def database_url_async(self) -> str:
+        url = self.database_url
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
+
     # LLM
     llm_provider: str = "gemini-3.8-flash"
     llm_api_key: str = ""
