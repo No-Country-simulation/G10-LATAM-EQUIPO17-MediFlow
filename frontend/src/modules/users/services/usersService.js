@@ -9,7 +9,7 @@ export function listarUsuarios({ force = false } = {}) {
 
   return fetchQuery(
     queryKeys.usuarios,
-    () => apiClient('/auth/usuarios'),
+    () => apiClient('/auth/usuarios').then(res => res.items ?? res),
     { force, ttl: queryTTL.operativo },
   )
 }
@@ -27,7 +27,7 @@ export function buscarUsuarios(q, { offset = 0, limit = 50, force = false } = {}
   const params = new URLSearchParams({ q, offset: String(offset), limit: String(limit) })
   return fetchQuery(
     `usuarios:buscar:${q}:${offset}:${limit}`,
-    () => apiClient(`/auth/usuarios/buscar?${params}`),
+    () => apiClient(`/auth/usuarios/buscar?${params}`).then(res => res.items ?? res),
     { force, ttl: queryTTL.operativo },
   )
 }
