@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.config import Settings, get_settings
 from src.core.database import get_db
-from src.core.exceptions import BucketNoEncontradoError, ConfiguracionOCIError, DocumentoNoEncontradoError
+from src.core.exceptions import BucketNoEncontradoError, ConfiguracionOCIError, DocumentoNoEncontradoError, SubidaFallidaError
 from src.core.rate_limit import limiter
 from src.models import RegistroTriaje
-from src.schemas.documento import EstadoDocumento
+from src.schemas.documento import EstadoDocumento, SolicitudMovimiento, ResultadoMovimiento
 from src.security import requiere_rol, Rol
 from src.security.schemas import TokenPayload
 from src.services.oci_storage import MediFlowStorage
@@ -180,3 +180,49 @@ async def descargar_documento(
             "Content-Length": str(len(contenido)),
         },
     )
+
+
+@router.post(
+    "/documentos/mover",
+    response_model=ResultadoMovimiento,
+    summary="Mover documento entre estados",
+    description=(
+        "Mueve un documento de un bucket a otro segun el flujo de triaje "
+        "(recibido → procesado → auditoria). Solo accesible para MEDICO y ADMIN."
+    ),
+    responses={
+        200: {"description": "Documento movido correctamente"},
+        400: {"description": "Bucket de origen no permitido o ruta invalida"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — requiere MEDICO o ADMIN"},
+        404: {"description": "Documento no encontrado en el bucket de origen"},
+        429: {"description": "Limite de solicitudes excedido (10/min)"},
+        500: {"description": "Error al mover el documento en OCI"},
+    },
+)
+@limiter.limit("10/minute")
+async def mover_documento(
+    request: Request,
+    solicitud: SolicitudMovimiento,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO, Rol.ADMIN)),
+    settings: Settings = Depends(get_settings),
+    storage: MediFlowStorage = Depends(get_storage),
+):
+    _validar_bucket_y_ruta(solicitud.bucket_origen, solicitud.ruta_objeto, settings)
+
+    try:
+        resultado = storage.mover_documento(
+            documento_id=solicitud.documento_id,
+            ruta_objeto=solicitud.ruta_objeto,
+            bucket_origen=solicitud.bucket_origen,
+            estado_destino=solicitud.estado_destino,
+        )
+    except DocumentoNoEncontradoError as e:
+        raise HTTPException(status_code=404, detail=e.mensaje)
+    except SubidaFallidaError as e:
+        raise HTTPException(status_code=500, detail=e.mensaje)
+
+    if not resultado.exito:
+        raise HTTPException(status_code=500, detail="No se pudo mover el documento")
+
+    return resultado

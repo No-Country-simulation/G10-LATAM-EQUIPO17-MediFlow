@@ -13,6 +13,7 @@ from src.security import (
     verificar_token,
 )
 from src.security.schemas import (
+    CambioPasswordRequest,
     CambioRolRequest,
     LoginRequest,
     LogoutRequest,
@@ -165,9 +166,14 @@ class AuthService:
         return self._to_usuario_response(usuario)
 
     
-    async def listar_usuarios(self) -> list[UsuarioResponse]:
-        usuarios = await self.user_repository.list_users()
-        return [self._to_usuario_response(usuario) for usuario in usuarios]
+    async def listar_usuarios(self, offset: int = 0, limit: int = 50) -> dict:
+        usuarios, total = await self.user_repository.list_users(offset=offset, limit=limit)
+        return {
+            "items": [self._to_usuario_response(u) for u in usuarios],
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+        }
 
 
     async def cambiar_rol(self, usuario_id: str, admin_id: str, cambio_rol_request: CambioRolRequest) -> UsuarioResponse:
@@ -185,6 +191,34 @@ class AuthService:
                 detail="Usuario no encontrado",
             )
         usuario = await self.user_repository.update_rol(usuario, cambio_rol_request.rol)
+        return self._to_usuario_response(usuario)
+
+    async def cambiar_password(self, usuario_id: str, datos: CambioPasswordRequest) -> dict:
+        usuario = await self.user_repository.find_user_by_id(usuario_id)
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado",
+            )
+
+        if not verificar_password(datos.password_actual, usuario.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="La contraseña actual es incorrecta",
+            )
+
+        nuevo_hash = hashear_password(datos.password_nueva)
+        await self.user_repository.update_password(usuario, nuevo_hash)
+        return {"detail": "Contraseña actualizada"}
+
+    async def cambiar_estado_usuario(self, usuario_id: str, activo: bool) -> UsuarioResponse:
+        usuario = await self.user_repository.find_user_by_id(usuario_id)
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado",
+            )
+        usuario = await self.user_repository.update_estado(usuario, activo)
         return self._to_usuario_response(usuario)
 
     def _to_usuario_response(self, usuario: Usuario) -> UsuarioResponse:

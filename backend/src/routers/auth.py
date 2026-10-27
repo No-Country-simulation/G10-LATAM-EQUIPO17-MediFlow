@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, status, Depends
+from fastapi import APIRouter, Query, Request, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services.auth_service import AuthService
@@ -15,6 +15,8 @@ from src.security import (
     RefreshRequest,
     LogoutRequest,
     CambioRolRequest,
+    CambioPasswordRequest,
+    CambioEstadoRequest,
     TokenResponse,
     TokenPayload,
     UsuarioResponse,
@@ -111,13 +113,32 @@ async def perfil_actual(
     return await auth_service.obtener_usuario(usuario.sub)
 
 
+@router.patch(
+    "/password",
+    summary="Cambiar contraseña",
+    description="Permite al usuario autenticado cambiar su contraseña verificando la actual.",
+    responses={
+        200: {"description": "Contraseña actualizada"},
+        401: {"description": "Contraseña actual incorrecta o token invalido"},
+        429: {"description": "Limite de solicitudes excedido (3/min)"},
+    },
+)
+@limiter.limit("3/minute")
+async def cambiar_password(
+    request: Request,
+    datos: CambioPasswordRequest,
+    usuario: TokenPayload = Depends(obtener_usuario_actual),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    return await auth_service.cambiar_password(usuario.sub, datos)
+
+
 @router.get(
     "/usuarios",
-    response_model=list[UsuarioResponse],
     summary="Listar todos los usuarios",
-    description="Retorna la lista completa de usuarios registrados. Solo accesible para ADMIN.",
+    description="Retorna la lista paginada de usuarios registrados. Solo accesible para ADMIN.",
     responses={
-        200: {"description": "Lista de usuarios"},
+        200: {"description": "Lista paginada de usuarios"},
         401: {"description": "Token invalido o expirado"},
         403: {"description": "Acceso denegado — solo ADMIN"},
         429: {"description": "Limite de solicitudes excedido (10/min)"},
@@ -126,10 +147,12 @@ async def perfil_actual(
 @limiter.limit("10/minute")
 async def listar_usuarios(
     request: Request,
+    offset: int = Query(default=0, ge=0, description="Registros a saltar"),
+    limit: int = Query(default=50, ge=1, le=200, description="Cantidad maxima de resultados"),
     usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
     auth_service: AuthService = Depends(get_auth_service),
 ):
-    return await auth_service.listar_usuarios()
+    return await auth_service.listar_usuarios(offset=offset, limit=limit)
 
 
 @router.patch(
@@ -154,3 +177,30 @@ async def cambiar_rol(
     auth_service: AuthService = Depends(get_auth_service),
 ):
     return await auth_service.cambiar_rol(usuario_id, admin.sub, datos)
+
+
+@router.patch(
+    "/usuarios/{usuario_id}/estado",
+    response_model=UsuarioResponse,
+    summary="Activar o desactivar usuario",
+    description="Permite a un ADMIN activar o desactivar la cuenta de un usuario del sistema.",
+    responses={
+        200: {"description": "Estado actualizado"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Acceso denegado — solo ADMIN"},
+        404: {"description": "Usuario no encontrado"},
+        429: {"description": "Limite de solicitudes excedido (10/min)"},
+    },
+)
+@limiter.limit("10/minute")
+async def cambiar_estado_usuario(
+    request: Request,
+    usuario_id: str,
+    datos: CambioEstadoRequest,
+    admin: TokenPayload = Depends(requiere_rol(Rol.ADMIN)),
+    auth_service: AuthService = Depends(get_auth_service),
+):
+    if usuario_id == admin.sub and not datos.activo:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="No puedes desactivar tu propia cuenta")
+    return await auth_service.cambiar_estado_usuario(usuario_id, datos.activo)

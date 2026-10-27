@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.database import get_db
@@ -25,14 +25,13 @@ def get_registro_triaje_repository(db: AsyncSession = Depends(get_db)) -> Regist
 
 @router.get(
     "/registros",
-    response_model=list[RegistroTriajeResponse],
     summary="Consultar registros de triaje",
     description=(
-        "Retorna los registros de triaje del usuario autenticado. "
+        "Retorna los registros de triaje paginados del usuario autenticado. "
         "Si el usuario es ADMIN, retorna todos los registros del sistema."
     ),
     responses={
-        200: {"description": "Lista de registros de triaje"},
+        200: {"description": "Lista paginada de registros de triaje"},
         401: {"description": "Token invalido o expirado"},
         429: {"description": "Limite de solicitudes excedido (30/min)"},
     },
@@ -40,12 +39,17 @@ def get_registro_triaje_repository(db: AsyncSession = Depends(get_db)) -> Regist
 @limiter.limit("30/minute")
 async def listar_registros_triaje(
     request: Request,
+    offset: int = Query(default=0, ge=0, description="Registros a saltar"),
+    limit: int = Query(default=50, ge=1, le=200, description="Cantidad maxima de resultados"),
     usuario: TokenPayload = Depends(obtener_usuario_actual),
-    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository)
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
 ):
     if usuario.rol == Rol.ADMIN:
-        return await repositorio_triaje.find_all()
-    return await repositorio_triaje.find_by_usuario(usuario.sub)
+        registros, total = await repositorio_triaje.find_all(offset=offset, limit=limit)
+    else:
+        registros, total = await repositorio_triaje.find_by_usuario(usuario.sub, offset=offset, limit=limit)
+
+    return {"items": registros, "total": total, "offset": offset, "limit": limit}
 
 
 @router.post(

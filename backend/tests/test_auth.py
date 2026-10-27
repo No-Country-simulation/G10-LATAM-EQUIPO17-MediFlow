@@ -130,7 +130,10 @@ async def test_logout(client: AsyncClient, usuario_registrado):
 async def test_listar_usuarios_como_admin(client: AsyncClient, usuario_admin):
     resp = await client.get("/auth/usuarios", headers=usuario_admin["headers"])
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert "items" in data
+    assert "total" in data
+    assert data["total"] >= 1
 
 
 @pytest.mark.asyncio
@@ -162,3 +165,83 @@ async def test_cambiar_rol_propio_denegado(client: AsyncClient, usuario_admin):
         headers=usuario_admin["headers"],
     )
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_me_sin_token(client: AsyncClient):
+    resp = await client.get("/auth/me")
+    assert resp.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_cambiar_password(client: AsyncClient, headers_paciente):
+    resp = await client.patch("/auth/password", json={
+        "password_actual": "password123",
+        "password_nueva": "nueva_clave_456",
+    }, headers=headers_paciente)
+    assert resp.status_code == 200
+    assert resp.json()["detail"] == "Contraseña actualizada"
+
+    resp = await client.post("/auth/login", json={
+        "email": "test@mediflow.cl",
+        "password": "nueva_clave_456",
+    })
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_cambiar_password_incorrecta(client: AsyncClient, headers_paciente):
+    resp = await client.patch("/auth/password", json={
+        "password_actual": "clave_equivocada",
+        "password_nueva": "nueva_clave_456",
+    }, headers=headers_paciente)
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_cambiar_password_nueva_muy_corta(client: AsyncClient, headers_paciente):
+    resp = await client.patch("/auth/password", json={
+        "password_actual": "password123",
+        "password_nueva": "corta",
+    }, headers=headers_paciente)
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_cambiar_password_sin_auth(client: AsyncClient):
+    resp = await client.patch("/auth/password", json={
+        "password_actual": "cualquiera",
+        "password_nueva": "nueva_clave_456",
+    })
+    assert resp.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_cambiar_estado_usuario(client: AsyncClient, usuario_admin, usuario_registrado):
+    from src.security.auth import verificar_token
+    payload = verificar_token(usuario_registrado["access_token"])
+    user_id = payload["sub"]
+
+    resp = await client.patch(
+        f"/auth/usuarios/{user_id}/estado",
+        json={"activo": False},
+        headers=usuario_admin["headers"],
+    )
+    assert resp.status_code == 200
+    assert resp.json()["activo"] is False
+
+    resp = await client.post("/auth/login", json={
+        "email": "test@mediflow.cl",
+        "password": "password123",
+    })
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_cambiar_estado_sin_admin(client: AsyncClient, headers_paciente):
+    resp = await client.patch(
+        "/auth/usuarios/cualquier-id/estado",
+        json={"activo": False},
+        headers=headers_paciente,
+    )
+    assert resp.status_code == 403

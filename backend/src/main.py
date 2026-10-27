@@ -1,4 +1,5 @@
 import logging
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -6,14 +7,15 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, text
 
 from src.core.config import get_settings
 from src.core.database import crear_tablas, async_session
 from src.core.rate_limit import limiter
 from src.middleware.audit import AuditMiddleware
+from src.services.oci_storage import MediFlowStorage
 from src.models import Usuario, TokenRevocado
-from src.routers import triaje_router, storage_router, auth_router
+from src.routers import admin_router, triaje_router, storage_router, auth_router
 from src.security.password import hashear_password
 from src.security.schemas import Rol
 
@@ -130,6 +132,43 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(triaje_router)
 app.include_router(storage_router)
+app.include_router(admin_router)
+
+
+@app.get("/health", tags=["Health"])
+@limiter.limit("30/minute")
+async def health_check(request: Request):
+    componentes = {}
+
+    try:
+        inicio = time.monotonic()
+        async with async_session() as db:
+            await db.execute(text("SELECT 1"))
+        latencia = round((time.monotonic() - inicio) * 1000, 1)
+        componentes["base_datos"] = {"estado": "ok", "latencia_ms": latencia}
+    except Exception:
+        componentes["base_datos"] = {"estado": "error"}
+
+    try:
+        storage = MediFlowStorage(settings)
+        resultado_oci = storage.verificar_conexion()
+        componentes["oci"] = {"estado": "ok" if resultado_oci.get("oci_conectado") else "error"}
+    except Exception:
+        componentes["oci"] = {"estado": "no_configurado"}
+
+    estados = [c["estado"] if isinstance(c, dict) else c for c in componentes.values()]
+    if all(e == "ok" for e in estados):
+        estado = "ok"
+    elif "error" in estados:
+        estado = "degradado" if "ok" in estados else "error"
+    else:
+        estado = "ok"
+
+    return {
+        "estado": estado,
+        "componentes": componentes,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
 
 @app.get("/", tags=["Root"])

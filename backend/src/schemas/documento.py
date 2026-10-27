@@ -175,6 +175,13 @@ class RegistroTriajeResponse(BaseModel):
     created_at: datetime
 
 
+class SolicitudMovimiento(BaseModel):
+    documento_id: str = Field(..., pattern=r"^[A-Za-z0-9_\-]+$", max_length=128)
+    ruta_objeto: str = Field(..., max_length=500)
+    bucket_origen: str = Field(..., max_length=100)
+    estado_destino: EstadoDocumento
+
+
 class ResultadoMovimiento(BaseModel):
     exito: bool
     documento_id: str

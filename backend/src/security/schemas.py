@@ -32,6 +32,15 @@ class CambioRolRequest(BaseModel):
     rol: Rol
 
 
+class CambioPasswordRequest(BaseModel):
+    password_actual: str
+    password_nueva: str = Field(..., min_length=8, max_length=128)
+
+
+class CambioEstadoRequest(BaseModel):
+    activo: bool
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

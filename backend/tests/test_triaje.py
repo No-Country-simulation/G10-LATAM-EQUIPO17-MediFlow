@@ -60,7 +60,10 @@ async def test_triaje_archivo_excede_limite(client: AsyncClient, headers_pacient
 async def test_registros_triaje_autenticado(client: AsyncClient, headers_paciente):
     resp = await client.get("/triaje/registros", headers=headers_paciente)
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert "items" in data
+    assert "total" in data
+    assert data["offset"] == 0
 
 
 @pytest.mark.asyncio

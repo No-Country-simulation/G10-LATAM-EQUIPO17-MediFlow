@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.security.schemas import Rol
 from src.models.usuario import Usuario
@@ -25,10 +25,13 @@ class UserRepository:
     async def find_user_by_id(self, user_id:str) -> Optional[Usuario]:
         return await self.db.get(Usuario, user_id)
 
-    async def list_users(self) -> list[Usuario]:
-        stmt = select(Usuario).order_by(Usuario.created_at.desc())
+    async def list_users(self, offset: int = 0, limit: int = 50) -> tuple[list[Usuario], int]:
+        total_result = await self.db.execute(select(func.count()).select_from(Usuario))
+        total = total_result.scalar()
+
+        stmt = select(Usuario).order_by(Usuario.created_at.desc()).offset(offset).limit(limit)
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+        return result.scalars().all(), total
 
     async def update_last_login(self, usuario: Usuario, fecha: datetime) -> Usuario:
         usuario.last_login = fecha
@@ -39,4 +42,14 @@ class UserRepository:
         usuario.rol = rol
         await self.db.commit()
         return usuario
-        
+
+    async def update_password(self, usuario: Usuario, password_hash: str) -> Usuario:
+        usuario.password_hash = password_hash
+        await self.db.commit()
+        return usuario
+
+    async def update_estado(self, usuario: Usuario, activo: bool) -> Usuario:
+        usuario.activo = activo
+        await self.db.commit()
+        await self.db.refresh(usuario)
+        return usuario
