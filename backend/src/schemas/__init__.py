@@ -4,4 +4,5 @@ from .documento import (
     SolicitudMovimiento, SolicitudTriaje, RespuestaTriaje,
     DatosExtraidos, DatosPaciente, DatosMedico,
     ClasificacionDocumento, DecisionEnrutamiento, AlmacenamientoOCI,
+    AsignacionRequest, ComentarioMedicoRequest,
 )

@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database import get_db
 from src.core.rate_limit import limiter
 from src.repository.registro_triaje_repository import RegistroTriajeRepository
-from src.schemas.documento import SolicitudTriaje, RespuestaTriaje, RegistroTriajeResponse
+from src.models.usuario import Usuario
+from src.schemas.documento import (
+    SolicitudTriaje, RespuestaTriaje, RegistroTriajeResponse,
+    AsignacionRequest, ComentarioMedicoRequest,
+)
 from src.security import obtener_usuario_actual, requiere_rol, Rol
 from src.security.schemas import TokenPayload
 from src.services.graph import procesar_solicitud_triaje
@@ -163,3 +167,129 @@ async def procesar_triaje_archivo(
     except Exception as e:
         logger.error("Error en triaje archivo %s: %s", documento_id, str(e), exc_info=True)
         raise HTTPException(status_code=500, detail="Error interno procesando el archivo")
+
+
+@router.patch(
+    "/registros/{registro_id}/asignar",
+    response_model=RegistroTriajeResponse,
+    summary="Asignar documento a un medico",
+    description=(
+        "Asigna un registro de triaje a un medico para revision humana. "
+        "Solo ADMIN y MEDICO pueden realizar esta operacion."
+    ),
+    responses={
+        200: {"description": "Registro asignado correctamente"},
+        404: {"description": "Registro o medico no encontrado"},
+        400: {"description": "El usuario asignado no tiene rol MEDICO"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Rol sin permisos para esta operacion"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
+@limiter.limit("30/minute")
+async def asignar_documento(
+    request: Request,
+    registro_id: str,
+    datos: AsignacionRequest,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.ADMIN, Rol.MEDICO)),
+    db: AsyncSession = Depends(get_db),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
+):
+    registro = await repositorio_triaje.find_by_id(registro_id)
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro de triaje no encontrado")
+
+    medico = await db.get(Usuario, datos.id_medico)
+    if not medico:
+        raise HTTPException(status_code=404, detail="Medico no encontrado")
+    if medico.rol != Rol.MEDICO:
+        raise HTTPException(status_code=400, detail="El usuario asignado debe tener rol MEDICO")
+
+    registro = await repositorio_triaje.asignar_medico(registro, datos.id_medico)
+    return RegistroTriajeResponse(
+        id=registro.id,
+        ruta_documento=registro.ruta_documento,
+        ruta_triaje=registro.ruta_triaje,
+        bucket=registro.bucket,
+        id_usuario=registro.id_usuario,
+        created_at=registro.created_at,
+        id_medico_asignado=registro.id_medico_asignado,
+        comentario_medico=registro.comentario_medico,
+        fecha_asignacion=registro.fecha_asignacion,
+        fecha_comentario=registro.fecha_comentario,
+    )
+
+
+@router.patch(
+    "/registros/{registro_id}/comentario",
+    response_model=RegistroTriajeResponse,
+    summary="Agregar comentario medico",
+    description=(
+        "Permite al medico asignado agregar su comentario o revision sobre el documento. "
+        "Solo el medico asignado al registro puede comentar."
+    ),
+    responses={
+        200: {"description": "Comentario agregado correctamente"},
+        404: {"description": "Registro no encontrado"},
+        403: {"description": "Solo el medico asignado puede comentar"},
+        401: {"description": "Token invalido o expirado"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
+@limiter.limit("30/minute")
+async def agregar_comentario_medico(
+    request: Request,
+    registro_id: str,
+    datos: ComentarioMedicoRequest,
+    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO)),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
+):
+    registro = await repositorio_triaje.find_by_id(registro_id)
+    if not registro:
+        raise HTTPException(status_code=404, detail="Registro de triaje no encontrado")
+
+    if registro.id_medico_asignado != usuario.sub:
+        raise HTTPException(status_code=403, detail="Solo el medico asignado puede agregar comentarios")
+
+    registro = await repositorio_triaje.agregar_comentario(registro, datos.comentario)
+    return RegistroTriajeResponse(
+        id=registro.id,
+        ruta_documento=registro.ruta_documento,
+        ruta_triaje=registro.ruta_triaje,
+        bucket=registro.bucket,
+        id_usuario=registro.id_usuario,
+        created_at=registro.created_at,
+        id_medico_asignado=registro.id_medico_asignado,
+        comentario_medico=registro.comentario_medico,
+        fecha_asignacion=registro.fecha_asignacion,
+        fecha_comentario=registro.fecha_comentario,
+    )
+
+
+@router.get(
+    "/registros/asignados",
+    summary="Consultar documentos asignados al medico",
+    description=(
+        "Retorna los registros de triaje asignados al medico autenticado, "
+        "con opcion de filtrar solo los pendientes de comentario."
+    ),
+    responses={
+        200: {"description": "Lista paginada de registros asignados"},
+        401: {"description": "Token invalido o expirado"},
+        403: {"description": "Rol sin permisos para esta operacion"},
+        429: {"description": "Limite de solicitudes excedido (30/min)"},
+    },
+)
+@limiter.limit("30/minute")
+async def listar_registros_asignados(
+    request: Request,
+    solo_pendientes: bool = Query(default=False, description="Filtrar solo registros sin comentario"),
+    offset: int = Query(default=0, ge=0, description="Registros a saltar"),
+    limit: int = Query(default=50, ge=1, le=200, description="Cantidad maxima de resultados"),
+    usuario: TokenPayload = Depends(requiere_rol(Rol.MEDICO)),
+    repositorio_triaje: RegistroTriajeRepository = Depends(get_registro_triaje_repository),
+):
+    registros, total = await repositorio_triaje.find_by_medico_asignado(
+        id_medico=usuario.sub, solo_pendientes=solo_pendientes, offset=offset, limit=limit,
+    )
+    return {"items": registros, "total": total, "offset": offset, "limit": limit}

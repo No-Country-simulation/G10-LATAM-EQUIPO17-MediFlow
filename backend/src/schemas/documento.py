@@ -173,6 +173,18 @@ class RegistroTriajeResponse(BaseModel):
     bucket: str
     id_usuario: str
     created_at: datetime
+    id_medico_asignado: str | None = None
+    comentario_medico: str | None = None
+    fecha_asignacion: datetime | None = None
+    fecha_comentario: datetime | None = None
+
+
+class AsignacionRequest(BaseModel):
+    id_medico: str = Field(..., min_length=1, max_length=36, description="ID del medico a asignar")
+
+
+class ComentarioMedicoRequest(BaseModel):
+    comentario: str = Field(..., min_length=1, max_length=5000, description="Comentario del medico sobre el documento")
 
 
 class SolicitudMovimiento(BaseModel):
