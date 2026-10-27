@@ -40,12 +40,18 @@ function LandingHeader() {
             <Link className="landing-nav__login" to="/login">
               Iniciar sesión
             </Link>
+            <Link className="landing-nav__register" to="/registro">
+              Registrarse
+            </Link>
           </li>
         </ul>
 
         <div className="landing-nav__actions">
           <Link className="landing-nav__login" to="/login">
             Iniciar sesión
+          </Link>
+          <Link className="landing-nav__register" to="/registro">
+            Registrarse
           </Link>
           <button
             type="button"

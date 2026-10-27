@@ -295,7 +295,7 @@
 
 .admin-stats__grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
   gap: 12px;
 }
 
@@ -608,10 +608,82 @@
   transform: translateX(2px);
 }
 
+/* ---------- Audit log ---------- */
+
+.admin-audit__method {
+  display: inline-block;
+  min-width: 48px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: var(--admin-accent-strong);
+  background: #e9f6f9;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.admin-audit__ruta {
+  max-width: 220px;
+  display: inline-block;
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-audit__uid {
+  max-width: 100px;
+  display: inline-block;
+  overflow: hidden;
+  font-size: 0.64rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-activity__state.is-error { color: var(--admin-danger); background: var(--admin-danger-bg); }
+.admin-activity__state.is-warn { color: var(--admin-warn); background: var(--admin-warn-bg); }
+
+.admin-audit__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.admin-audit__page-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--admin-line);
+  border-radius: 8px;
+  color: var(--admin-ink);
+  background: var(--admin-surface);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 700;
+  transition: border-color 180ms ease, background 180ms ease;
+}
+
+.admin-audit__page-btn:hover:not(:disabled) {
+  border-color: var(--admin-accent);
+  background: var(--admin-panel);
+}
+
+.admin-audit__page-btn:disabled { cursor: default; opacity: 0.4; }
+
+.admin-audit__page-info {
+  color: var(--admin-soft);
+  font-size: 0.62rem;
+}
+
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1180px) {
-  .admin-stats__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-stats__grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 
 @media (max-width: 1040px) {

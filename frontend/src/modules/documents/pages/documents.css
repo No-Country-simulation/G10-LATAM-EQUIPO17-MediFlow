@@ -141,6 +141,9 @@
   background: var(--color-mf-bg-3);
 }
 
+.doc-table__btn--danger { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+.doc-table__btn--danger:hover { color: #fff; border-color: #b91c1c; background: #b91c1c; }
+
 .doc-badge {
   display: inline-flex;
   padding: 5px 11px;

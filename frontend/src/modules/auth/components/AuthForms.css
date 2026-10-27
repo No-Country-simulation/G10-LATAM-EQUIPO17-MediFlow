@@ -75,3 +75,31 @@
   font-size: 0.78rem;
   line-height: 1.4;
 }
+
+.auth-form__rules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-form__rule {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  color: var(--color-mf-dark-3);
+  transition: color 0.2s ease;
+}
+
+.auth-form__rule.is-met {
+  color: #3a9d8e;
+}
+
+.auth-form__rule-icon {
+  font-size: 0.68rem;
+  width: 14px;
+  text-align: center;
+}

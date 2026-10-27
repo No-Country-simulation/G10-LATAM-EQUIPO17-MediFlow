@@ -1,3 +1,5 @@
+import { apiClient } from '../../../shared/api/apiClient'
+import { fetchQuery, queryTTL } from '../../../shared/api/queryCache'
 import { ROLES } from '../../../app/session'
 import { listarRegistrosTriaje } from '../../agent/services/agentService'
 import { ESTADO_DOCUMENTO } from '../../documents/types/estados'
@@ -45,6 +47,26 @@ export function resumenPorRol(rol) {
     metricas: METRICAS[rol] || [],
     accesos: ACCESOS[rol] || [],
   }
+}
+
+export function obtenerMetricasTriaje({ force = false } = {}) {
+  return fetchQuery(
+    'admin:metricas:triaje',
+    () => apiClient('/admin/metricas/triaje'),
+    { force, ttl: queryTTL.operativo },
+  )
+}
+
+export function consultarAuditoria({ offset = 0, limit = 50, metodo, desde, hasta, force = false } = {}) {
+  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) })
+  if (metodo) params.set('metodo', metodo)
+  if (desde) params.set('desde', desde)
+  if (hasta) params.set('hasta', hasta)
+  return fetchQuery(
+    `admin:auditoria:${offset}:${limit}:${metodo || ''}:${desde || ''}:${hasta || ''}`,
+    () => apiClient(`/admin/auditoria?${params}`),
+    { force, ttl: queryTTL.operativo },
+  )
 }
 
 const LIMITE_AUDITORIA = 500
@@ -113,12 +135,13 @@ function construirActividades(registros, usuarios) {
  * Cada fuente es independiente: si una falla, el resto del dashboard sigue operativo.
  */
 export async function cargarResumenAdmin({ force = false } = {}) {
-  const [usuariosResultado, storageResultado, registrosResultado, auditoriaResultado] =
+  const [usuariosResultado, storageResultado, registrosResultado, auditoriaResultado, metricasTriajeResultado] =
     await Promise.allSettled([
       listarUsuarios({ force }),
       verificarSaludStorage({ force }),
       listarRegistrosTriaje({ force }),
       listarDocumentos({ estado: ESTADO_DOCUMENTO.AUDITORIA, limite: LIMITE_AUDITORIA, force }),
+      obtenerMetricasTriaje({ force }),
     ])
 
   const usuarios = usuariosResultado.status === 'fulfilled' && Array.isArray(usuariosResultado.value)
@@ -130,6 +153,9 @@ export async function cargarResumenAdmin({ force = false } = {}) {
     : null
   const auditoria = auditoriaResultado.status === 'fulfilled' && Array.isArray(auditoriaResultado.value)
     ? auditoriaResultado.value
+    : null
+  const metricasTriaje = metricasTriajeResultado.status === 'fulfilled'
+    ? metricasTriajeResultado.value
     : null
 
   const metricas = {
@@ -147,6 +173,7 @@ export async function cargarResumenAdmin({ force = false } = {}) {
     enRevisionTruncado: auditoria ? auditoria.length >= LIMITE_AUDITORIA : false,
     storageConectado: storage ? storage.oci_conectado === true : null,
     storageRegion: storage?.region || null,
+    triaje: metricasTriaje || null,
   }
 
   return {
@@ -157,6 +184,7 @@ export async function cargarResumenAdmin({ force = false } = {}) {
       storage: storageResultado.status === 'rejected',
       registros: registrosResultado.status === 'rejected',
       auditoria: auditoriaResultado.status === 'rejected',
+      metricasTriaje: metricasTriajeResultado.status === 'rejected',
     },
   }
 }

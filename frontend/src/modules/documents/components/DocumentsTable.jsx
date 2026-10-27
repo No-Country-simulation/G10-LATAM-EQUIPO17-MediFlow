@@ -5,7 +5,7 @@ function formatearFecha(valor) {
     : 'Fecha no disponible'
 }
 
-function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArchivo }) {
+function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArchivo, esAdmin, onEliminar }) {
   if (documentos.length === 0) return null
 
   return (
@@ -16,7 +16,7 @@ function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArc
             <th scope="col">Archivo</th>
             <th scope="col">Fecha</th>
             <th scope="col">Proceso</th>
-            <th scope="col"><span className="sr-only">Detalle</span></th>
+            <th scope="col"><span className="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
@@ -37,6 +37,15 @@ function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArc
                 >
                   Ver detalle
                 </button>
+                {esAdmin && onEliminar && (
+                  <button
+                    type="button"
+                    className="doc-table__btn doc-table__btn--danger"
+                    onClick={() => onEliminar(documento)}
+                  >
+                    Eliminar
+                  </button>
+                )}
               </td>
             </tr>
           ))}

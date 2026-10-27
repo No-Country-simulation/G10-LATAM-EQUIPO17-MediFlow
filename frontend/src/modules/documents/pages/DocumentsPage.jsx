@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getRol, ROLES } from '../../../app/session'
+import { eliminarRegistroTriaje } from '../../agent/services/agentService'
 import DocumentsFilters from '../components/DocumentsFilters'
 import DocumentsTable from '../components/DocumentsTable'
 import DocumentDetailPanel from '../components/DocumentDetailPanel'
@@ -81,11 +82,26 @@ function DocumentsPage() {
       .some((valor) => String(valor || '').toLocaleLowerCase().includes(texto)),
   )
 
+  const esAdmin = getRol() === ROLES.ADMIN
+
   const seleccionar = (registro) => {
     setMetadata(null)
     setErrorDetalle('')
     setCargandoDetalle(true)
     setSeleccionado(registro)
+  }
+
+  const eliminar = (registro) => {
+    const confirmar = window.confirm(
+      `¿Eliminar el registro ${registro.id}? Esta acción no se puede deshacer.`,
+    )
+    if (!confirmar) return
+    eliminarRegistroTriaje(registro.id)
+      .then(() => {
+        setRegistros((prev) => prev.filter((r) => r.id !== registro.id))
+        if (seleccionado?.id === registro.id) setSeleccionado(null)
+      })
+      .catch((err) => setError(err.message || 'No se pudo eliminar el registro'))
   }
 
   return (
@@ -134,6 +150,8 @@ function DocumentsPage() {
                 onSeleccionar={seleccionar}
                 seleccionadoId={seleccionado?.id}
                 nombreDeArchivo={nombreDeArchivo}
+                esAdmin={esAdmin}
+                onEliminar={eliminar}
               />
               <DocumentDetailPanel
                 documento={seleccionado}

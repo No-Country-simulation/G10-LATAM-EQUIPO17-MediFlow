@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AgentStatusCard from '../components/admin/AgentStatusCard'
+import AuditLog from '../components/admin/AuditLog'
 import QuickAccessPanel from '../components/admin/QuickAccessPanel'
 import QuickStatsGrid from '../components/admin/QuickStatsGrid'
 import RecentActivity from '../components/admin/RecentActivity'
@@ -11,6 +12,7 @@ const ETIQUETAS_FALLOS = {
   storage: 'almacenamiento',
   registros: 'registros de triaje',
   auditoria: 'documentos en revisión',
+  metricasTriaje: 'métricas de triaje',
 }
 
 function AdminDashboardPage() {
@@ -99,6 +101,8 @@ function AdminDashboardPage() {
         />
         <QuickAccessPanel />
       </div>
+
+      <AuditLog />
     </div>
   )
 }

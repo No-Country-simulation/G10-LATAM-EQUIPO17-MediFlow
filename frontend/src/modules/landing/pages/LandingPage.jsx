@@ -6,6 +6,7 @@ import HeroSection from '../components/HeroSection'
 import HowItWorksSection from '../components/HowItWorksSection'
 import FeaturesSection from '../components/FeaturesSection'
 import SecuritySection from '../components/SecuritySection'
+import CtaSection from '../components/CtaSection'
 import LandingFooter from '../components/LandingFooter'
 
 gsap.registerPlugin(ScrollTrigger)
@@ -81,14 +82,38 @@ function createLandingScrollAnimations() {
     }
   )
   gsap.fromTo(
-    '.landing-security__content',
+    '.landing-security__header',
     { opacity: 0, y: 26 },
     {
       opacity: 1,
       y: 0,
       duration: 0.6,
       ease: 'power2.out',
-      scrollTrigger: { trigger: '.landing-security', start: 'top 78%', once: true },
+      scrollTrigger: { trigger: '#seguridad', start: 'top 78%', once: true },
+    }
+  )
+  gsap.fromTo(
+    '.landing-security__card',
+    { opacity: 0, y: 26 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.5,
+      stagger: 0.1,
+      ease: 'power2.out',
+      scrollTrigger: { trigger: '.landing-security__grid', start: 'top 82%', once: true },
+    }
+  )
+
+  gsap.fromTo(
+    '.landing-cta__inner',
+    { opacity: 0, y: 24 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: 0.7,
+      ease: 'power2.out',
+      scrollTrigger: { trigger: '.landing-cta', start: 'top 82%', once: true },
     }
   )
 
@@ -131,6 +156,7 @@ function LandingPage() {
         <HowItWorksSection />
         <FeaturesSection />
         <SecuritySection />
+        <CtaSection />
       </main>
       <LandingFooter />
     </div>

@@ -55,3 +55,10 @@ export function listarRegistrosTriaje({ force = false } = {}) {
     { force, ttl: queryTTL.operativo },
   )
 }
+
+export function eliminarRegistroTriaje(registroId) {
+  return apiClient(`/triaje/registros/${registroId}`, { metodo: 'DELETE' }).then((respuesta) => {
+    invalidarRecursosDeTriaje()
+    return respuesta
+  })
+}

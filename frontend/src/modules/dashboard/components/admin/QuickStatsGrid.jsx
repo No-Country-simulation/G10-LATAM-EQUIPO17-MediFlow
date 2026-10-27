@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { DocumentsIcon, StorageIcon, UsersIcon } from '../../../../app/icons'
+import { AgentIcon, DocumentsIcon, StorageIcon, UsersIcon } from '../../../../app/icons'
 
 function mostrarValor(valor, cargando) {
   if (cargando) return '—'
@@ -82,6 +82,32 @@ function QuickStatsGrid({ metricas, cargando }) {
             ? 'Registros de triaje'
             : `${metricas.documentosHoy} procesados hoy`}
           tono="violet"
+          cargando={cargando}
+        />
+        <DashboardStatCard
+          to="/agent"
+          icono={AgentIcon}
+          etiqueta="Triaje asignado"
+          valor={metricas?.triaje?.asignados ?? null}
+          detalle={
+            metricas?.triaje
+              ? `${metricas.triaje.sin_asignar} sin asignar`
+              : 'Métricas de triaje'
+          }
+          tono="teal"
+          cargando={cargando}
+        />
+        <DashboardStatCard
+          to="/agent"
+          icono={AgentIcon}
+          etiqueta="En auditoría"
+          valor={metricas?.triaje?.por_bucket?.auditoria ?? metricas?.enRevision ?? null}
+          detalle={
+            metricas?.triaje?.comentados != null
+              ? `${metricas.triaje.comentados} con comentarios`
+              : 'Documentos pendientes de revisión'
+          }
+          tono="amber"
           cargando={cargando}
         />
         <DashboardStatCard

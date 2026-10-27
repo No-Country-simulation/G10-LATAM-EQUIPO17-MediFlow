@@ -14,6 +14,24 @@ export function listarUsuarios({ force = false } = {}) {
   )
 }
 
+export function buscarUsuarios(q, { offset = 0, limit = 50, force = false } = {}) {
+  if (USO_DEMO) {
+    const termino = q.toLowerCase()
+    return Promise.resolve(
+      DEMO_USUARIOS.filter(
+        (u) => u.nombre.toLowerCase().includes(termino) || u.email.toLowerCase().includes(termino),
+      ),
+    )
+  }
+
+  const params = new URLSearchParams({ q, offset: String(offset), limit: String(limit) })
+  return fetchQuery(
+    `usuarios:buscar:${q}:${offset}:${limit}`,
+    () => apiClient(`/auth/usuarios/buscar?${params}`),
+    { force, ttl: queryTTL.operativo },
+  )
+}
+
 export async function cambiarRol(usuarioId, rol) {
   if (USO_DEMO) return { id: usuarioId, rol }
 
