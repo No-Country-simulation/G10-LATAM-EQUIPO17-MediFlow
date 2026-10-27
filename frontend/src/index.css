@@ -26,7 +26,10 @@ html {
 body {
   margin: 0;
   font-family: var(--font-sans);
-  background: var(--color-mf-bg);
+  background-color: var(--color-mf-bg);
+  background-image:
+    radial-gradient(circle, var(--color-mf-bg-4) 0.8px, transparent 0.8px);
+  background-size: 28px 28px;
   color: var(--color-mf-dark);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;

@@ -25,7 +25,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  max-width: 178px;
+  max-width: 210px;
   background: #fff;
   border: 1px solid var(--color-mf-bg-4);
   border-radius: 14px;
@@ -37,7 +37,10 @@
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--color-mf-dark-3);
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .agent__doc--tl {

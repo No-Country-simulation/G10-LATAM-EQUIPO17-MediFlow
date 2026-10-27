@@ -1,7 +1,10 @@
 .dashboard-layout {
   display: flex;
   min-height: 100vh;
-  background: var(--color-mf-bg);
+  background-color: var(--color-mf-bg);
+  background-image:
+    radial-gradient(circle, var(--color-mf-bg-4) 0.8px, transparent 0.8px);
+  background-size: 28px 28px;
   color: var(--color-mf-dark);
 }
 
