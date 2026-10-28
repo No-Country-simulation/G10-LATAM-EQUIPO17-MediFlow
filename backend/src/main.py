@@ -15,7 +15,7 @@ from src.core.database import crear_tablas, async_session
 from src.core.rate_limit import limiter
 from src.middleware.audit import AuditMiddleware
 from src.models import Usuario, TokenRevocado
-from src.routers import triaje_router, storage_router, auth_router
+from src.routers import triaje_router, storage_router, auth_router, admin_router
 from src.security.password import hashear_password
 from src.security.schemas import Rol
 
@@ -146,6 +146,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(triaje_router)
 app.include_router(storage_router)
+app.include_router(admin_router)
 
 
 @app.get("/", tags=["Root"])

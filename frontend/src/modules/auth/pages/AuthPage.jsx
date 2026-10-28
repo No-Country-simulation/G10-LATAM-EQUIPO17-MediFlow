@@ -2,16 +2,20 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthVisualPanel from '../components/AuthVisualPanel'
 import LoginForm from '../components/LoginForm'
+import RegisterForm from '../components/RegisterForm'
 import { saveSession } from '../../../app/session'
-import { iniciarSesion, obtenerMensajeAuth } from '../services/authService'
+import { iniciarSesion, registrarUsuario, obtenerMensajeAuth } from '../services/authService'
 import './AuthPage.css'
 
 function AuthPage() {
   const navigate = useNavigate()
+  const [modo, setModo] = useState('login')
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = async (data) => {
+  const esLogin = modo === 'login'
+
+  const handleLogin = async (data) => {
     setErrorMessage('')
     setIsSubmitting(true)
 
@@ -33,6 +37,36 @@ function AuthPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleRegister = async (data) => {
+    setErrorMessage('')
+    setIsSubmitting(true)
+
+    try {
+      const resultado = await registrarUsuario({
+        nombre: data.nombre,
+        email: data.correo,
+        password: data.contrasena,
+      })
+
+      saveSession({
+        nombre: resultado.usuario.nombre,
+        email: resultado.usuario.email,
+        rol: resultado.usuario.rol,
+      })
+
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setErrorMessage(obtenerMensajeAuth(error))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const cambiarModo = (nuevoModo) => {
+    setModo(nuevoModo)
+    setErrorMessage('')
   }
 
   return (
@@ -86,12 +120,42 @@ function AuthPage() {
               </svg>
               Volver al inicio
             </Link>
-            <h2 className="auth-card__title">Bienvenido de nuevo</h2>
+
+            <div className="auth-card__tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                className={`auth-card__tab ${esLogin ? 'is-active' : ''}`}
+                aria-selected={esLogin}
+                onClick={() => cambiarModo('login')}
+              >
+                Iniciar sesión
+              </button>
+              <button
+                type="button"
+                role="tab"
+                className={`auth-card__tab ${!esLogin ? 'is-active' : ''}`}
+                aria-selected={!esLogin}
+                onClick={() => cambiarModo('registro')}
+              >
+                Registrarse
+              </button>
+            </div>
+
+            <h2 className="auth-card__title">
+              {esLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
+            </h2>
             <p className="auth-card__subtitle">
-              Accede a tu espacio de trabajo en MediFlow.
+              {esLogin
+                ? 'Accede a tu espacio de trabajo en MediFlow.'
+                : 'Regístrate para comenzar a usar MediFlow.'}
             </p>
 
-            <LoginForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+            {esLogin ? (
+              <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} />
+            ) : (
+              <RegisterForm onSubmit={handleRegister} isSubmitting={isSubmitting} />
+            )}
 
             {errorMessage && (
               <p className="auth-card__error" role="alert">
@@ -102,7 +166,7 @@ function AuthPage() {
 
           <footer className="auth-right__footer">
             <p className="auth-right__footer-txt">
-              Al iniciar sesión en MediFlow, aceptas nuestros{' '}
+              Al {esLogin ? 'iniciar sesión en' : 'registrarte en'} MediFlow, aceptas nuestros{' '}
               <a href="#terminos">Términos del Servicio Clínico</a> y la{' '}
               <a href="#privacidad">Política de Protección de Datos de Salud</a>.
             </p>
