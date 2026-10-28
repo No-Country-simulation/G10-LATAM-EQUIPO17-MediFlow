@@ -18,7 +18,6 @@ _engine_kwargs = {}
 
 if _is_pg:
     _connect_args["statement_cache_size"] = 0
-    _connect_args["prepared_statement_cache_size"] = 0
     _engine_kwargs["pool_size"] = 2
     _engine_kwargs["max_overflow"] = 0
     _engine_kwargs["pool_pre_ping"] = True

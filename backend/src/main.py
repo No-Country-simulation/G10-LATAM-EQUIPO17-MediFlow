@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -58,7 +59,7 @@ async def lifespan(app: FastAPI):
         log.info("Validando configuracion...")
         settings.validar_produccion()
         log.info("Creando tablas...")
-        await crear_tablas()
+        await asyncio.wait_for(crear_tablas(), timeout=15)
         log.info("Tablas creadas OK")
         eliminados = await purgar_tokens_expirados()
         if eliminados:
