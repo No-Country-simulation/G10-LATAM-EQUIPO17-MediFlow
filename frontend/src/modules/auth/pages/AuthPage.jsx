@@ -2,18 +2,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthVisualPanel from '../components/AuthVisualPanel'
 import LoginForm from '../components/LoginForm'
-import RegisterForm from '../components/RegisterForm'
 import { saveSession } from '../../../app/session'
-import {iniciarSesion,obtenerMensajeAuth,registrarUsuario} from '../services/authService'
+import { iniciarSesion, obtenerMensajeAuth } from '../services/authService'
 import './AuthPage.css'
 
-const tabs = [
-  { id: 'login', label: 'Iniciar sesión' },
-  { id: 'registro', label: 'Registrarse' },
-]
-
-function AuthPage({ initialTab = 'login' }) {
-  const [tab, setTab] = useState(initialTab)
+function AuthPage() {
   const navigate = useNavigate()
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -23,16 +16,10 @@ function AuthPage({ initialTab = 'login' }) {
     setIsSubmitting(true)
 
     try {
-      const resultado = tab === 'registro'
-        ? await registrarUsuario({
-            nombre: data.nombre,
-            email: data.correo,
-            password: data.contrasena,
-          })
-        : await iniciarSesion({
-            email: data.correo,
-            password: data.contrasena,
-          })
+      const resultado = await iniciarSesion({
+        email: data.correo,
+        password: data.contrasena,
+      })
 
       saveSession({
         nombre: resultado.usuario.nombre,
@@ -99,43 +86,13 @@ function AuthPage({ initialTab = 'login' }) {
               </svg>
               Volver al inicio
             </Link>
-            <h2 className="auth-card__title">
-              {tab === 'login' ? 'Bienvenido de nuevo' : 'Crear cuenta'}
-            </h2>
+            <h2 className="auth-card__title">Bienvenido de nuevo</h2>
             <p className="auth-card__subtitle">
-              {tab === 'login'
-                ? 'Accede a tu espacio de trabajo en MediFlow.'
-                : 'Regístrate para comenzar a procesar documentos clínicos.'}
+              Accede a tu espacio de trabajo en MediFlow.
             </p>
 
-            <div className="auth-card__tabs" role="tablist" aria-label="Opciones de acceso">
-              {tabs.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === item.id}
-                  className={tab === item.id ? 'auth-card__tab is-active' : 'auth-card__tab'}
-                  onClick={() => {
-                    setTab(item.id)
-                    setErrorMessage('')
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <LoginForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
 
-            {tab === 'login' ? (
-              <LoginForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-            ) : (
-              <>
-                <RegisterForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
-                <p className="auth-card__note">
-                  Tu cuenta se creará con el rol de paciente.
-                </p>
-              </>
-            )}
             {errorMessage && (
               <p className="auth-card__error" role="alert">
                 {errorMessage}
@@ -150,7 +107,7 @@ function AuthPage({ initialTab = 'login' }) {
               <a href="#privacidad">Política de Protección de Datos de Salud</a>.
             </p>
             <p className="auth-right__footer-copy">
-              © 2025 MediFlow Healthcare AI Technologies. Todos los derechos reservados.
+              © 2026 MediFlow Healthcare AI Technologies. Todos los derechos reservados.
             </p>
           </footer>
         </div>

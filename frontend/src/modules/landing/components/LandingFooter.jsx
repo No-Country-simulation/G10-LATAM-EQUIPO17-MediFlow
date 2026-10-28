@@ -32,7 +32,6 @@ function LandingFooter() {
           <span className="landing-footer__nav-title">Acceso</span>
           <ul className="landing-footer__nav-list">
             <li><Link to="/login">Iniciar sesión</Link></li>
-            <li><Link to="/registro">Crear cuenta</Link></li>
           </ul>
         </div>
 
