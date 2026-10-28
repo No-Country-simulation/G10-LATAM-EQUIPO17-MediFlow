@@ -1,6 +1,4 @@
-import asyncio
 import logging
-import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -8,15 +6,16 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete
+
+from sqlalchemy import select
 
 from src.core.config import get_settings
 from src.core.database import crear_tablas, async_session
 from src.core.rate_limit import limiter
 from src.middleware.audit import AuditMiddleware
-from src.services.oci_storage import MediFlowStorage
 from src.models import Usuario, TokenRevocado
-from src.routers import admin_router, triaje_router, storage_router, auth_router
+from src.routers import triaje_router, storage_router, auth_router
 from src.security.password import hashear_password
 from src.security.schemas import Rol
 
@@ -54,30 +53,22 @@ async def purgar_tokens_expirados():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings.validar_produccion()
-    await crear_tablas()
-    eliminados = await purgar_tokens_expirados()
-    if eliminados:
-        logging.getLogger("mediflow").info("Tokens expirados purgados: %d", eliminados)
-    await crear_admin_inicial()
-
-    async def purga_periodica():
-        while True:
-            await asyncio.sleep(3600)
-            try:
-                n = await purgar_tokens_expirados()
-                if n:
-                    logging.getLogger("mediflow").info("Purga periodica: %d tokens eliminados", n)
-            except Exception as e:
-                logging.getLogger("mediflow").error("Error en purga periodica: %s", str(e))
-
-    tarea_purga = asyncio.create_task(purga_periodica())
-    yield
-    tarea_purga.cancel()
+    log = logging.getLogger("mediflow.startup")
     try:
-        await tarea_purga
-    except asyncio.CancelledError:
-        pass
+        log.info("Validando configuracion...")
+        settings.validar_produccion()
+        log.info("Creando tablas...")
+        await crear_tablas()
+        log.info("Tablas creadas OK")
+        eliminados = await purgar_tokens_expirados()
+        if eliminados:
+            log.info("Tokens expirados purgados: %d", eliminados)
+        await crear_admin_inicial()
+        log.info("Startup completo")
+    except Exception as e:
+        log.error("Error en startup: %s", e, exc_info=True)
+        raise
+    yield
 
 
 settings = get_settings()
@@ -97,16 +88,11 @@ app = FastAPI(
 
 app.state.limiter = limiter
 
-from pythonjsonlogger.json import JsonFormatter
-
-json_handler = logging.StreamHandler()
-json_handler.setFormatter(JsonFormatter(
-    fmt="%(asctime)s %(name)s %(levelname)s %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S",
-    rename_fields={"asctime": "timestamp", "name": "logger", "levelname": "level"},
-))
-logging.root.handlers = [json_handler]
-logging.root.setLevel(logging.INFO)
+logging_cfg = logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 app.add_middleware(AuditMiddleware)
 
@@ -141,13 +127,18 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     )
 
 
-origins = [o.strip() for o in settings.allowed_origins.split(",")]
-usa_credenciales = "*" not in origins
+#origins = [o.strip() for o in settings.allowed_origins.split(",")]
+# usa_credenciales = "*" not in origins
+ 
+origins = [
+    "https://g10-latam-equipo-17-medi-flow.vercel.app",
+    "http://localhost:5173",  
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=usa_credenciales,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
@@ -155,43 +146,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(triaje_router)
 app.include_router(storage_router)
-app.include_router(admin_router)
-
-
-@app.get("/health", tags=["Health"])
-@limiter.limit("30/minute")
-async def health_check(request: Request):
-    componentes = {}
-
-    try:
-        inicio = time.monotonic()
-        async with async_session() as db:
-            await db.execute(text("SELECT 1"))
-        latencia = round((time.monotonic() - inicio) * 1000, 1)
-        componentes["base_datos"] = {"estado": "ok", "latencia_ms": latencia}
-    except Exception:
-        componentes["base_datos"] = {"estado": "error"}
-
-    try:
-        storage = MediFlowStorage(settings)
-        resultado_oci = storage.verificar_conexion()
-        componentes["oci"] = {"estado": "ok" if resultado_oci.get("oci_conectado") else "error"}
-    except Exception:
-        componentes["oci"] = {"estado": "no_configurado"}
-
-    estados = [c["estado"] if isinstance(c, dict) else c for c in componentes.values()]
-    if all(e == "ok" for e in estados):
-        estado = "ok"
-    elif "error" in estados:
-        estado = "degradado" if "ok" in estados else "error"
-    else:
-        estado = "ok"
-
-    return {
-        "estado": estado,
-        "componentes": componentes,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
 
 
 @app.get("/", tags=["Root"])
