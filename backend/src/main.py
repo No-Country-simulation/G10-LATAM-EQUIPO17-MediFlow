@@ -61,10 +61,11 @@ async def lifespan(app: FastAPI):
         log.info("Creando tablas...")
         await asyncio.wait_for(crear_tablas(), timeout=15)
         log.info("Tablas creadas OK")
-        eliminados = await purgar_tokens_expirados()
-        if eliminados:
-            log.info("Tokens expirados purgados: %d", eliminados)
-        await crear_admin_inicial()
+        log.info("Purgando tokens expirados...")
+        eliminados = await asyncio.wait_for(purgar_tokens_expirados(), timeout=10)
+        log.info("Tokens purgados: %d", eliminados or 0)
+        log.info("Creando admin inicial...")
+        await asyncio.wait_for(crear_admin_inicial(), timeout=10)
         log.info("Startup completo")
     except Exception as e:
         log.error("Error en startup: %s", e, exc_info=True)
