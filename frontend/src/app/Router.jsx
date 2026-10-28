@@ -17,7 +17,6 @@ function AppRouter() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<AuthPage initialTab="login" />} />
-      <Route path="/registro" element={<AuthPage initialTab="registro" />} />
       <Route path="/document-processing" element={<DocumentProcessingPage />} />
 
       <Route element={<RequireAuth />}>

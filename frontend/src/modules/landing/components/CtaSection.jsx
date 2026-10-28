@@ -8,7 +8,7 @@ function CtaSection() {
         <h2 id="cta-title">Comienza a procesar documentos clínicos <span>de forma estructurada.</span></h2>
         <p>Crea tu cuenta en segundos. Sube un documento y observa el pipeline de triaje en acción.</p>
         <div className="landing-cta__actions">
-          <Link className="landing-cta__primary" to="/registro">Crear cuenta gratis</Link>
+          <Link className="landing-cta__primary" to="/login">Iniciar sesión</Link>
           <a className="landing-cta__secondary" href="#como-funciona">Ver cómo funciona</a>
         </div>
       </div>
