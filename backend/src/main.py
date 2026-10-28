@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -59,13 +58,12 @@ async def lifespan(app: FastAPI):
         log.info("Validando configuracion...")
         settings.validar_produccion()
         log.info("Creando tablas...")
-        await asyncio.wait_for(crear_tablas(), timeout=15)
+        await crear_tablas()
         log.info("Tablas creadas OK")
-        log.info("Purgando tokens expirados...")
-        eliminados = await asyncio.wait_for(purgar_tokens_expirados(), timeout=10)
-        log.info("Tokens purgados: %d", eliminados or 0)
-        log.info("Creando admin inicial...")
-        await asyncio.wait_for(crear_admin_inicial(), timeout=10)
+        eliminados = await purgar_tokens_expirados()
+        if eliminados:
+            log.info("Tokens expirados purgados: %d", eliminados)
+        await crear_admin_inicial()
         log.info("Startup completo")
     except Exception as e:
         log.error("Error en startup: %s", e, exc_info=True)
@@ -84,8 +82,8 @@ app = FastAPI(
         "seguro en OCI Object Storage."
     ),
     lifespan=lifespan,
-    docs_url=None if settings.es_produccion else "/docs",
-    redoc_url=None if settings.es_produccion else "/redoc",
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 app.state.limiter = limiter
@@ -131,10 +129,10 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 
 #origins = [o.strip() for o in settings.allowed_origins.split(",")]
 # usa_credenciales = "*" not in origins
- 
+
 origins = [
     "https://g10-latam-equipo-17-medi-flow.vercel.app",
-    "http://localhost:5173",  
+    "http://localhost:5173",
 ]
 
 app.add_middleware(
