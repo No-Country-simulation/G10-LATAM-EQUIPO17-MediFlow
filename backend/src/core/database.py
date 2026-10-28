@@ -18,11 +18,7 @@ _engine_kwargs = {}
 
 if _is_pg:
     _connect_args["statement_cache_size"] = 0
-    _engine_kwargs["pool_size"] = 2
-    _engine_kwargs["max_overflow"] = 0
-    _engine_kwargs["pool_pre_ping"] = True
-    _engine_kwargs["pool_timeout"] = 10
-    logger.info("Usando PostgreSQL (asyncpg) con PgBouncer config")
+    logger.info("PostgreSQL detectado, statement_cache_size=0")
 
 engine = create_async_engine(
     _url,
