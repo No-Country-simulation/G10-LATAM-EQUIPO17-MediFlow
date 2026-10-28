@@ -40,4 +40,6 @@ async def get_db() -> AsyncSession:
 
 async def crear_tablas():
     async with engine.begin() as conn:
+        if _is_pg:
+            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

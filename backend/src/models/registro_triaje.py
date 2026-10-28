@@ -12,11 +12,11 @@ class RegistroTriaje(Base):
     ruta_documento: Mapped[str | None] = mapped_column(String(500), default=None)
     ruta_triaje: Mapped[str] = mapped_column(String(500))
     id_usuario: Mapped[str] = mapped_column(String(36), ForeignKey("usuarios.id"), index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     id_medico_asignado: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("usuarios.id"), index=True, default=None,
     )
     comentario_medico: Mapped[str | None] = mapped_column(Text, default=None)
-    fecha_asignacion: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    fecha_comentario: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    eliminado_en: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    fecha_asignacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    fecha_comentario: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    eliminado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)

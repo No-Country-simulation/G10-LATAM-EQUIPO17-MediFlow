@@ -16,4 +16,4 @@ class RegistroAuditoria(Base):
     ip: Mapped[str] = mapped_column(String(45))
     usuario_id: Mapped[str | None] = mapped_column(String(36), index=True, default=None)
     rol: Mapped[str | None] = mapped_column(String(20), default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
