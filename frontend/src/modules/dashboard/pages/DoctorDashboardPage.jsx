@@ -6,7 +6,7 @@ function DoctorDashboardPage() {
       rol="medico"
       rolEtiqueta="Profesional de la salud"
       saludo="Tu espacio clínico"
-      bienvenida="Revisa el flujo de documentos y sigue el trabajo del Agente MediFlow."
+      bienvenida="Consulta tus revisiones asignadas y procesa documentos con el Agente MediFlow."
     />
   )
 }

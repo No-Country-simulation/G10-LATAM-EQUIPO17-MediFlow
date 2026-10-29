@@ -36,6 +36,7 @@ function AgentPage() {
   const [archivos, setArchivos] = useState([])
   const [fase, setFase] = useState('idle')
   const [registros, setRegistros] = useState([])
+  const [totalRegistros, setTotalRegistros] = useState(0)
   const [cargandoHistorial, setCargandoHistorial] = useState(true)
   const [historialCargado, setHistorialCargado] = useState(false)
   const [resultadoClinico, setResultadoClinico] = useState(null)
@@ -57,7 +58,8 @@ function AgentPage() {
     try {
       const datos = await listarRegistrosTriaje({ force })
       if (solicitudActual !== solicitudRegistros.current) return
-      setRegistros(Array.isArray(datos) ? datos : [])
+      setRegistros(Array.isArray(datos?.items) ? datos.items : [])
+      setTotalRegistros(datos?.total ?? 0)
       setHistorialCargado(true)
     } catch {
       if (solicitudActual !== solicitudRegistros.current) return
@@ -88,10 +90,10 @@ function AgentPage() {
   }, [])
 
   const metricas = useMemo(() => {
-    const procesadosHoy = historialCargado
+    const procesadosHoy = historialCargado && totalRegistros === registros.length
       ? registros.filter((registro) => esFechaDeHoy(registro.created_at)).length
       : null
-    const analisisCompletados = historialCargado ? registros.length : null
+    const analisisCompletados = historialCargado ? totalRegistros : null
     const latenciaMedia = duraciones.length
       ? duraciones.reduce((total, duracion) => total + duracion, 0) / duraciones.length
       : null
@@ -102,7 +104,7 @@ function AgentPage() {
       analisisCompletados,
       latenciaMedia,
     }
-  }, [duraciones, historialCargado, registros])
+  }, [duraciones, historialCargado, registros, totalRegistros])
 
   const agregarArchivos = useCallback((seleccionados) => {
     if (!seleccionados.length) return

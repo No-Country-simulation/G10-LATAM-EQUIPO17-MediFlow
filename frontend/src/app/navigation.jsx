@@ -3,6 +3,7 @@ import {
   DashboardIcon,
   DocumentsIcon,
   ProfileIcon,
+  ReviewIcon,
   StorageIcon,
   UsersIcon,
 } from './icons'
@@ -10,9 +11,10 @@ import { ROLES } from './session'
 
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', roles: [ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE], icon: DashboardIcon },
-  { path: '/agent', label: 'Agente MediFlow', roles: [ROLES.ADMIN, ROLES.MEDICO], icon: AgentIcon },
+  { path: '/agent', label: 'Agente MediFlow', roles: [ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE], icon: AgentIcon },
   { path: '/users', label: 'Usuarios', roles: [ROLES.ADMIN], icon: UsersIcon },
   { path: '/documents', label: 'Documentos', roles: [ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE], icon: DocumentsIcon },
+  { path: '/reviews', label: 'Revisión humana', roles: [ROLES.ADMIN, ROLES.MEDICO], icon: ReviewIcon },
   { path: '/storage', label: 'Storage', roles: [ROLES.ADMIN], icon: StorageIcon },
   { path: '/profile', label: 'Mi perfil', roles: [ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE], icon: ProfileIcon },
 ]

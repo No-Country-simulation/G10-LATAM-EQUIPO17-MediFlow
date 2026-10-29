@@ -6,7 +6,7 @@ function PatientDashboardPage() {
       rol="paciente"
       rolEtiqueta="Paciente"
       saludo="Hola, bienvenido a tu espacio"
-      bienvenida="Consulta el estado de tus documentos y tu perfil de acceso."
+      bienvenida="Envía documentos a triaje, consulta tus procesos completados y revisa tu perfil."
     />
   )
 }

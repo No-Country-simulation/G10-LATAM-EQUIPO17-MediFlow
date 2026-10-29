@@ -38,6 +38,9 @@
 .doc-page__refresh { min-height: 40px; padding: 0 16px; border: 1px solid var(--color-mf-bg-4); border-radius: 10px; background: var(--color-mf-bg-2); color: var(--color-mf-dark-2); cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 700; }
 .doc-page__refresh:hover:not(:disabled) { border-color: var(--color-mf-sky); }
 .doc-page__refresh:disabled { cursor: wait; opacity: 0.55; }
+.doc-page__pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 18px; color: var(--color-mf-dark-3); font-size: 0.8rem; }
+.doc-page__pagination button { min-height: 40px; padding: 0 14px; border: 1px solid var(--color-mf-bg-4); border-radius: 9px; background: #fff; color: var(--color-mf-dark-2); cursor: pointer; font: inherit; }
+.doc-page__pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .doc-filters__search { position: relative; display: flex; align-items: center; }
 
@@ -122,14 +125,17 @@
 .doc-table__meta { display: block; max-width: 280px; margin-top: 2px; overflow-wrap: anywhere; font-size: 0.7rem; }
 .doc-table__prioridad { text-transform: capitalize; }
 .doc-table__acciones { text-align: right; }
+.doc-table__action-group { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 
 .doc-table__btn {
-  padding: 7px 12px;
+  min-height: 40px;
+  padding: 8px 14px;
   border: 1px solid var(--color-mf-bg-4);
   border-radius: 9px;
   color: var(--color-mf-dark-2);
   background: var(--color-mf-bg-2);
   cursor: pointer;
+  font: inherit;
   font-size: 0.72rem;
   font-weight: 700;
   transition: color 180ms ease, border-color 180ms ease, background 180ms ease;
@@ -141,8 +147,22 @@
   background: var(--color-mf-bg-3);
 }
 
-.doc-table__btn--danger { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
-.doc-table__btn--danger:hover { color: #fff; border-color: #b91c1c; background: #b91c1c; }
+.doc-table__btn--danger { color: #9f303e; border-color: #ecccd1; background: #fff8f8; }
+.doc-table__btn--danger:hover { color: #fff; border-color: #9f303e; background: #9f303e; }
+
+.doc-delete { display: grid; gap: 8px; color: var(--color-mf-dark-2); }
+.doc-delete p { margin: 0; line-height: 1.55; }
+.doc-delete__name { overflow-wrap: anywhere; color: var(--color-mf-dark); }
+.doc-delete__id { overflow-wrap: anywhere; color: var(--color-mf-dark-3); font-size: 0.78rem; }
+.doc-delete .doc-delete__note { margin-top: 8px; color: var(--color-mf-dark-3); font-size: 0.82rem; }
+.doc-delete .doc-delete__error { margin-top: 6px; color: #9f303e; font-size: 0.82rem; }
+.doc-delete__actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.doc-delete__actions button { min-height: 44px; padding: 0 18px; border: 1px solid var(--color-mf-bg-4); border-radius: 10px; background: var(--color-mf-bg-2); color: var(--color-mf-dark-2); cursor: pointer; font: inherit; font-size: 0.82rem; font-weight: 700; }
+.doc-delete__actions button:hover:not(:disabled) { border-color: var(--color-mf-sky); background: var(--color-mf-bg-3); }
+.doc-delete__actions .doc-delete__confirm { border-color: #9f303e; background: #9f303e; color: #fff; }
+.doc-delete__actions .doc-delete__confirm:hover:not(:disabled) { border-color: #792631; background: #792631; }
+.doc-delete__actions button:focus-visible { outline: 3px solid var(--color-mf-sky); outline-offset: 2px; }
+.doc-delete__actions button:disabled { cursor: wait; opacity: 0.65; }
 
 .doc-badge {
   display: inline-flex;

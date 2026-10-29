@@ -100,7 +100,7 @@ function UsersPage() {
       />
 
       <p className="users-page__count" role="status">
-        Mostrando {visibleUsers.length} de {filteredUsers.length} usuarios
+        Mostrando {visibleUsers.length} de {filteredUsers.length} usuarios cargados (máximo 50, filtros locales)
       </p>
 
       {cargando && <p className="users-page__state">Cargando usuarios…</p>}

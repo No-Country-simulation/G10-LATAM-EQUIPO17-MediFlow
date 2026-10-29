@@ -1,14 +1,13 @@
 import { apiClient } from '../../../shared/api/apiClient'
 import {
   fetchQuery,
-  invalidateQuery,
   invalidateQueryPrefix,
   queryKeys,
   queryTTL,
 } from '../../../shared/api/queryCache'
 
 function invalidarRecursosDeTriaje() {
-  invalidateQuery(queryKeys.registrosTriaje)
+  invalidateQueryPrefix(queryKeys.registrosTriaje)
   invalidateQueryPrefix('storage:documentos:')
   invalidateQueryPrefix('storage:metadata:')
 }
@@ -48,10 +47,10 @@ export function procesarTriajeArchivo(archivo, documentoId, canalOrigen = 'manua
   })
 }
 
-export function listarRegistrosTriaje({ force = false } = {}) {
+export function listarRegistrosTriaje({ offset = 0, limit = 50, force = false } = {}) {
   return fetchQuery(
-    queryKeys.registrosTriaje,
-    () => apiClient('/triaje/registros'),
+    `${queryKeys.registrosTriaje}:${offset}:${limit}`,
+    () => apiClient('/triaje/registros', { query: { offset, limit } }),
     { force, ttl: queryTTL.operativo },
   )
 }

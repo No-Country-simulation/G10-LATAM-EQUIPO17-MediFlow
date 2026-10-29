@@ -3,27 +3,10 @@ import { fetchQuery, queryTTL } from '../../../shared/api/queryCache'
 import { ROLES } from '../../../app/session'
 import { listarRegistrosTriaje } from '../../agent/services/agentService'
 import { ESTADO_DOCUMENTO } from '../../documents/types/estados'
-import { listarDocumentos } from '../../documents/services/documentsService'
+import { listarDocumentos, listarHistorialDocumentos } from '../../documents/services/documentsService'
+import { listarAsignados } from '../../human-review/services/reviewService'
 import { verificarSaludStorage } from '../../storage/services/storageService'
 import { listarUsuarios } from '../../users/services/usersService'
-
-const METRICAS = {
-  [ROLES.ADMIN]: [
-    { id: 'usuarios', etiqueta: 'Usuarios registrados', valor: '34', tendencia: '+4 esta semana' },
-    { id: 'documentos', etiqueta: 'Documentos procesados', valor: '512', tendencia: '+12% vs. semana anterior' },
-    { id: 'auditoria', etiqueta: 'En auditoría humana', valor: '7', tendencia: 'requieren revisión' },
-    { id: 'storage', etiqueta: 'Estado de storage', valor: 'Operativo', tendencia: 'OCI conectado' },
-  ],
-  [ROLES.MEDICO]: [
-    { id: 'documentos', etiqueta: 'Documentos procesados', valor: '128', tendencia: '+8 hoy' },
-    { id: 'pendientes', etiqueta: 'En cola del agente', valor: '3', tendencia: 'esperando triaje' },
-    { id: 'urgencias', etiqueta: 'Prioridad urgente', valor: '2', tendencia: 'requieren atención' },
-  ],
-  [ROLES.PACIENTE]: [
-    { id: 'documentos', etiqueta: 'Mis documentos', valor: '14', tendencia: 'en tu historial' },
-    { id: 'nuevos', etiqueta: 'Nuevos resultados', valor: '1', tendencia: 'listo para revisar' },
-  ],
-}
 
 const ACCESOS = {
   [ROLES.ADMIN]: [
@@ -34,9 +17,11 @@ const ACCESOS = {
   ],
   [ROLES.MEDICO]: [
     { path: '/agent', etiqueta: 'Agente MediFlow', descripcion: 'Triaje y enrutamiento de documentos' },
+    { path: '/reviews', etiqueta: 'Mis revisiones', descripcion: 'Casos asignados e indicaciones médicas' },
     { path: '/documents', etiqueta: 'Ver documentos', descripcion: 'Consultar el repositorio clínico' },
   ],
   [ROLES.PACIENTE]: [
+    { path: '/agent', etiqueta: 'Agente MediFlow', descripcion: 'Análisis de documentos desde tu dispositivo' },
     { path: '/documents', etiqueta: 'Mis documentos', descripcion: 'Consulta tu historial de procesos completados' },
     { path: '/profile', etiqueta: 'Mi perfil', descripcion: 'Revisa tus datos de acceso' },
   ],
@@ -44,15 +29,36 @@ const ACCESOS = {
 
 export function resumenPorRol(rol) {
   return {
-    metricas: METRICAS[rol] || [],
     accesos: ACCESOS[rol] || [],
   }
+}
+
+export async function cargarMetricasPorRol(rol) {
+  if (rol === ROLES.MEDICO) {
+    const datos = await listarAsignados({ soloPendientes: true })
+    if (!Number.isInteger(datos?.total) || datos.total < 0) throw new Error('Resumen no disponible')
+    return [{ id: 'pendientes', etiqueta: 'Revisiones pendientes de comentario', valor: datos.total, tendencia: 'Casos asignados a ti' }]
+  }
+  if (rol === ROLES.PACIENTE) {
+    const datos = await listarHistorialDocumentos({ limit: 1 })
+    if (!Number.isInteger(datos?.total) || datos.total < 0) throw new Error('Resumen no disponible')
+    return [{ id: 'documentos', etiqueta: 'Procesos completados', valor: datos.total, tendencia: 'En tu historial de triaje' }]
+  }
+  return []
 }
 
 export function obtenerMetricasTriaje({ force = false } = {}) {
   return fetchQuery(
     'admin:metricas:triaje',
     () => apiClient('/admin/metricas/triaje'),
+    { force, ttl: queryTTL.operativo },
+  )
+}
+
+function obtenerEstadisticasAdmin({ force = false } = {}) {
+  return fetchQuery(
+    'admin:estadisticas',
+    () => apiClient('/admin/estadisticas'),
     { force, ttl: queryTTL.operativo },
   )
 }
@@ -135,9 +141,10 @@ function construirActividades(registros, usuarios) {
  * Cada fuente es independiente: si una falla, el resto del dashboard sigue operativo.
  */
 export async function cargarResumenAdmin({ force = false } = {}) {
-  const [usuariosResultado, storageResultado, registrosResultado, auditoriaResultado, metricasTriajeResultado] =
+  const [usuariosResultado, estadisticasResultado, storageResultado, registrosResultado, auditoriaResultado, metricasTriajeResultado] =
     await Promise.allSettled([
       listarUsuarios({ force }),
+      obtenerEstadisticasAdmin({ force }),
       verificarSaludStorage({ force }),
       listarRegistrosTriaje({ force }),
       listarDocumentos({ estado: ESTADO_DOCUMENTO.AUDITORIA, limite: LIMITE_AUDITORIA, force }),
@@ -147,9 +154,10 @@ export async function cargarResumenAdmin({ force = false } = {}) {
   const usuarios = usuariosResultado.status === 'fulfilled' && Array.isArray(usuariosResultado.value)
     ? usuariosResultado.value
     : null
+  const estadisticas = estadisticasResultado.status === 'fulfilled' ? estadisticasResultado.value : null
   const storage = storageResultado.status === 'fulfilled' ? storageResultado.value : null
-  const registros = registrosResultado.status === 'fulfilled' && Array.isArray(registrosResultado.value)
-    ? registrosResultado.value
+  const registros = registrosResultado.status === 'fulfilled' && Array.isArray(registrosResultado.value?.items)
+    ? registrosResultado.value.items
     : null
   const auditoria = auditoriaResultado.status === 'fulfilled' && Array.isArray(auditoriaResultado.value)
     ? auditoriaResultado.value
@@ -159,12 +167,13 @@ export async function cargarResumenAdmin({ force = false } = {}) {
     : null
 
   const metricas = {
-    usuariosTotal: usuarios ? usuarios.length : null,
-    usuariosActivos: usuarios ? usuarios.filter((usuario) => usuario.activo).length : null,
-    medicos: usuarios ? usuarios.filter((usuario) => usuario.rol === ROLES.MEDICO).length : null,
-    pacientes: usuarios ? usuarios.filter((usuario) => usuario.rol === ROLES.PACIENTE).length : null,
-    documentosTotal: registros ? registros.length : null,
-    documentosHoy: registros ? registros.filter((registro) => esDelDiaActual(registro.created_at)).length : null,
+    usuariosTotal: estadisticas?.usuarios?.total ?? null,
+    usuariosActivos: estadisticas?.usuarios?.activos ?? null,
+    medicos: estadisticas?.usuarios?.por_rol ? estadisticas.usuarios.por_rol.medico ?? 0 : null,
+    pacientes: estadisticas?.usuarios?.por_rol ? estadisticas.usuarios.por_rol.paciente ?? 0 : null,
+    documentosTotal: registros ? registrosResultado.value.total : null,
+    documentosHoy: registros && registrosResultado.value.total === registros.length
+      ? registros.filter((registro) => esDelDiaActual(registro.created_at)).length : null,
     enRevision: auditoria
       ? auditoria.length >= LIMITE_AUDITORIA
         ? `${LIMITE_AUDITORIA}+`
@@ -181,6 +190,7 @@ export async function cargarResumenAdmin({ force = false } = {}) {
     actividades: registros ? construirActividades(registros, usuarios || []) : [],
     fallos: {
       usuarios: usuariosResultado.status === 'rejected',
+      estadisticas: estadisticasResultado.status === 'rejected',
       storage: storageResultado.status === 'rejected',
       registros: registrosResultado.status === 'rejected',
       auditoria: auditoriaResultado.status === 'rejected',

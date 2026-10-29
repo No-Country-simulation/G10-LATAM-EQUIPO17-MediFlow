@@ -68,3 +68,12 @@ export function ProfileIcon() {
     </svg>
   )
 }
+
+export function ReviewIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect x="3.5" y="2.5" width="13" height="15" rx="2" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M6.5 7.5h7M6.5 11l2 2 4.5-4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}

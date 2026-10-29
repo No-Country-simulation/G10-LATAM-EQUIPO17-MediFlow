@@ -21,10 +21,10 @@ export function obtenerDocumento(bucket, rutaObjeto) {
   )
 }
 
-export function listarHistorialDocumentos({ force = false } = {}) {
+export function listarHistorialDocumentos({ offset = 0, limit = 50, force = false } = {}) {
   return fetchQuery(
-    queryKeys.registrosTriaje,
-    () => apiClient('/triaje/registros'),
+    `${queryKeys.registrosTriaje}:${offset}:${limit}`,
+    () => apiClient('/triaje/registros', { query: { offset, limit } }),
     { force, ttl: queryTTL.operativo },
   )
 }

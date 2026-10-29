@@ -9,6 +9,7 @@ import './AdminDashboardPage.css'
 
 const ETIQUETAS_FALLOS = {
   usuarios: 'usuarios',
+  estadisticas: 'estadísticas de usuarios',
   storage: 'almacenamiento',
   registros: 'registros de triaje',
   auditoria: 'documentos en revisión',

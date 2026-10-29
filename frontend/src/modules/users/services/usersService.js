@@ -1,5 +1,5 @@
 import { apiClient } from '../../../shared/api/apiClient'
-import { fetchQuery, invalidateQuery, queryKeys, queryTTL } from '../../../shared/api/queryCache'
+import { fetchQuery, invalidateQueryPrefix, queryKeys, queryTTL } from '../../../shared/api/queryCache'
 import { DEMO_USUARIOS } from '../mocks/demoUsuarios'
 
 const USO_DEMO = false
@@ -10,6 +10,14 @@ export function listarUsuarios({ force = false } = {}) {
   return fetchQuery(
     queryKeys.usuarios,
     () => apiClient('/auth/usuarios').then(res => res.items ?? res),
+    { force, ttl: queryTTL.operativo },
+  )
+}
+
+export function listarUsuariosPaginados({ offset = 0, limit = 200, force = false } = {}) {
+  return fetchQuery(
+    `${queryKeys.usuarios}:${offset}:${limit}`,
+    () => apiClient('/auth/usuarios', { query: { offset, limit } }),
     { force, ttl: queryTTL.operativo },
   )
 }
@@ -40,6 +48,6 @@ export async function cambiarRol(usuarioId, rol) {
     body: { rol },
   })
 
-  invalidateQuery(queryKeys.usuarios)
+  invalidateQueryPrefix(queryKeys.usuarios)
   return resultado
 }

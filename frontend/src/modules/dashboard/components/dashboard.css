@@ -87,12 +87,5 @@
 .quick-links__card strong { color: var(--color-mf-dark-2); font-size: 0.84rem; }
 .quick-links__card span { color: var(--color-mf-dark-3); font-size: 0.72rem; line-height: 1.45; }
 
-.dash-page__foot { margin-top: 34px; }
 
-.dash-page__foot a {
-  color: var(--color-mf-sky-mid);
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
+.dash-page__feedback { margin: 0; padding: 20px 22px; border: 1px solid var(--color-mf-bg-4); border-radius: 16px; background: var(--color-mf-bg-2); color: var(--color-mf-dark-3); font-size: 0.84rem; }

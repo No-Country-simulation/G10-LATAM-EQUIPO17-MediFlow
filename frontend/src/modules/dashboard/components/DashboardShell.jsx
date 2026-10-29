@@ -1,11 +1,27 @@
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import MetricCard from '../components/MetricCard'
 import QuickLinks from '../components/QuickLinks'
-import { resumenPorRol } from '../services/dashboardService'
+import { cargarMetricasPorRol, resumenPorRol } from '../services/dashboardService'
 import './dashboard.css'
 
 function DashboardShell({ rol, rolEtiqueta, saludo, bienvenida }) {
-  const { metricas, accesos } = resumenPorRol(rol)
+  const { accesos } = resumenPorRol(rol)
+  const [metricas, setMetricas] = useState([])
+  const [estado, setEstado] = useState('cargando')
+
+  useEffect(() => {
+    let activo = true
+    cargarMetricasPorRol(rol)
+      .then((datos) => {
+        if (!activo) return
+        setMetricas(datos)
+        setEstado('listo')
+      })
+      .catch(() => {
+        if (activo) setEstado('error')
+      })
+    return () => { activo = false }
+  }, [rol])
 
   return (
     <div className="dash-page">
@@ -15,7 +31,9 @@ function DashboardShell({ rol, rolEtiqueta, saludo, bienvenida }) {
         <p>{bienvenida}</p>
       </header>
 
-      {metricas.length > 0 && (
+      {estado === 'cargando' && <p className="dash-page__feedback" role="status">Consultando tu información…</p>}
+      {estado === 'error' && <p className="dash-page__feedback" role="alert">No se pudo consultar tu resumen. Puedes acceder a tus secciones desde los enlaces de abajo.</p>}
+      {estado === 'listo' && metricas.length > 0 && (
         <section className="metric-grid" aria-label="Métricas principales">
           {metricas.map((metrica) => (
             <MetricCard key={metrica.id} metrica={metrica} />
@@ -24,10 +42,6 @@ function DashboardShell({ rol, rolEtiqueta, saludo, bienvenida }) {
       )}
 
       <QuickLinks accesos={accesos} />
-
-      <footer className="dash-page__foot">
-        <Link to="/agent">Explorar el Agente MediFlow</Link>
-      </footer>
     </div>
   )
 }

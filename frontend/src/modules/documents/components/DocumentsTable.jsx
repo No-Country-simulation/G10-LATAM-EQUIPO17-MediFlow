@@ -29,23 +29,26 @@ function DocumentsTable({ documentos, onSeleccionar, seleccionadoId, nombreDeArc
               <td>{formatearFecha(documento.created_at)}</td>
               <td><span className="doc-badge doc-badge--procesado">Completado</span></td>
               <td className="doc-table__acciones">
-                <button
-                  type="button"
-                  className="doc-table__btn"
-                  onClick={() => onSeleccionar(documento)}
-                  aria-pressed={seleccionadoId === documento.id}
-                >
-                  Ver detalle
-                </button>
-                {esAdmin && onEliminar && (
+                <div className="doc-table__action-group">
                   <button
                     type="button"
-                    className="doc-table__btn doc-table__btn--danger"
-                    onClick={() => onEliminar(documento)}
+                    className="doc-table__btn"
+                    onClick={() => onSeleccionar(documento)}
+                    aria-pressed={seleccionadoId === documento.id}
                   >
-                    Eliminar
+                    Ver detalle
                   </button>
-                )}
+                  {esAdmin && onEliminar && (
+                    <button
+                      type="button"
+                      className="doc-table__btn doc-table__btn--danger"
+                      onClick={(event) => onEliminar(documento, event.currentTarget)}
+                      aria-label={`Eliminar registro ${documento.id}`}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}

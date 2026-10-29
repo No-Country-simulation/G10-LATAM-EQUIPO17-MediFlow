@@ -9,6 +9,7 @@ import DashboardPage from '../modules/dashboard/pages/DashboardPage'
 import AgentPage from '../modules/agent/pages/AgentPage'
 import UsersPage from '../modules/users/pages/UsersPage'
 import DocumentsPage from '../modules/documents/pages/DocumentsPage'
+import ReviewPage from '../modules/human-review/pages/ReviewPage'
 import StoragePage from '../modules/storage/pages/StoragePage'
 import ProfilePage from '../modules/profile/pages/ProfilePage'
 
@@ -25,7 +26,7 @@ function AppRouter() {
           <Route
             path="/agent"
             element={
-              <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO]}>
+              <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE]}>
                 <AgentPage />
               </RequireRole>
             }
@@ -43,6 +44,14 @@ function AppRouter() {
             element={
               <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO, ROLES.PACIENTE]}>
                 <DocumentsPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reviews"
+            element={
+              <RequireRole roles={[ROLES.ADMIN, ROLES.MEDICO]}>
+                <ReviewPage />
               </RequireRole>
             }
           />

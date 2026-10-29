@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getRol, ROLES } from '../../../app/session'
+import Modal from '../../../shared/ui/Modal'
 import { eliminarRegistroTriaje } from '../../agent/services/agentService'
 import DocumentsFilters from '../components/DocumentsFilters'
 import DocumentsTable from '../components/DocumentsTable'
@@ -26,6 +27,9 @@ function mensajeError(error, detalle = false) {
 }
 
 function DocumentsPage() {
+  const limite = 50
+  const [pagina, setPagina] = useState(1)
+  const [total, setTotal] = useState(0)
   const [busqueda, setBusqueda] = useState('')
   const [registros, setRegistros] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -35,25 +39,32 @@ function DocumentsPage() {
   const [metadata, setMetadata] = useState(null)
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
   const [errorDetalle, setErrorDetalle] = useState('')
+  const [registroAEliminar, setRegistroAEliminar] = useState(null)
+  const [eliminando, setEliminando] = useState(false)
+  const [errorEliminacion, setErrorEliminacion] = useState('')
+  const botonEliminarRef = useRef(null)
+  const tituloRef = useRef(null)
 
   useEffect(() => {
     let activo = true
-    listarHistorialDocumentos({ force: actualizacion > 0 })
+    listarHistorialDocumentos({ offset: (pagina - 1) * limite, limit: limite, force: actualizacion > 0 })
       .then((datos) => {
         if (!activo) return
-        setRegistros(Array.isArray(datos) ? datos : [])
+        setRegistros(Array.isArray(datos?.items) ? datos.items : [])
+        setTotal(datos?.total ?? 0)
         setError('')
       })
       .catch((err) => {
         if (!activo) return
         setError(mensajeError(err))
         setRegistros([])
+        setTotal(0)
       })
       .finally(() => {
         if (activo) setCargando(false)
       })
     return () => { activo = false }
-  }, [actualizacion])
+  }, [actualizacion, pagina])
 
   useEffect(() => {
     if (!seleccionado) return undefined
@@ -91,24 +102,45 @@ function DocumentsPage() {
     setSeleccionado(registro)
   }
 
-  const eliminar = (registro) => {
-    const confirmar = window.confirm(
-      `¿Eliminar el registro ${registro.id}? Esta acción no se puede deshacer.`,
-    )
-    if (!confirmar) return
-    eliminarRegistroTriaje(registro.id)
-      .then(() => {
-        setRegistros((prev) => prev.filter((r) => r.id !== registro.id))
-        if (seleccionado?.id === registro.id) setSeleccionado(null)
-      })
-      .catch((err) => setError(err.message || 'No se pudo eliminar el registro'))
+  const solicitarEliminacion = (registro, boton) => {
+    botonEliminarRef.current = boton
+    setRegistroAEliminar(registro)
+    setErrorEliminacion('')
+  }
+
+  const cerrarEliminacion = () => {
+    if (eliminando) return
+    setRegistroAEliminar(null)
+    setErrorEliminacion('')
+    requestAnimationFrame(() => botonEliminarRef.current?.focus())
+  }
+
+  const confirmarEliminacion = async () => {
+    if (!registroAEliminar || eliminando) return
+    setEliminando(true)
+    setErrorEliminacion('')
+    try {
+      await eliminarRegistroTriaje(registroAEliminar.id)
+      setRegistroAEliminar(null)
+      if (seleccionado?.id === registroAEliminar.id) setSeleccionado(null)
+      setCargando(true)
+      if (registros.length === 1 && pagina > 1) {
+        setPagina((prev) => prev - 1)
+      }
+      setActualizacion((valor) => valor + 1)
+      requestAnimationFrame(() => tituloRef.current?.focus())
+    } catch (err) {
+      setErrorEliminacion(mensajeError(err))
+    } finally {
+      setEliminando(false)
+    }
   }
 
   return (
     <div className="doc-page">
       <header className="doc-page__intro">
         <span className="doc-page__kicker">Historial de triaje</span>
-        <h1>Documentos</h1>
+        <h1 ref={tituloRef} tabIndex={-1}>Documentos</h1>
         <p>
           {getRol() === ROLES.ADMIN
             ? 'Consulta los procesos completados del sistema. Los intentos en espera o fallidos aún no forman parte del historial.'
@@ -137,11 +169,11 @@ function DocumentsPage() {
       {!cargando && !error && (
         <>
           <p className="doc-page__count" role="status">
-            {`Mostrando ${visibles.length} de ${registros.length} proceso${registros.length === 1 ? '' : 's'} completado${registros.length === 1 ? '' : 's'}`}
+            {`Mostrando ${visibles.length} en esta página · ${total} proceso${total === 1 ? '' : 's'} completado${total === 1 ? '' : 's'} en total`}
           </p>
           {visibles.length === 0 ? (
             <p className="doc-page__state">
-              {registros.length ? 'No hay procesos que coincidan con tu búsqueda.' : 'Aún no hay procesos completados para mostrar.'}
+              {registros.length ? 'No hay procesos que coincidan con tu búsqueda en esta página.' : total > 0 ? 'No hay procesos en esta página. Actualiza el historial para ver los cambios.' : 'Aún no hay procesos completados para mostrar.'}
             </p>
           ) : (
             <>
@@ -151,7 +183,7 @@ function DocumentsPage() {
                 seleccionadoId={seleccionado?.id}
                 nombreDeArchivo={nombreDeArchivo}
                 esAdmin={esAdmin}
-                onEliminar={eliminar}
+                onEliminar={solicitarEliminacion}
               />
               <DocumentDetailPanel
                 documento={seleccionado}
@@ -163,8 +195,32 @@ function DocumentsPage() {
               />
             </>
           )}
+          {total > limite && (
+            <nav className="doc-page__pagination" aria-label="Páginas del historial">
+              <button type="button" disabled={pagina === 1} onClick={() => { setCargando(true); setSeleccionado(null); setPagina((prev) => prev - 1) }}>Anterior</button>
+              <span>Página {pagina} de {Math.ceil(total / limite)}</span>
+              <button type="button" disabled={pagina * limite >= total} onClick={() => { setCargando(true); setSeleccionado(null); setPagina((prev) => prev + 1) }}>Siguiente</button>
+            </nav>
+          )}
         </>
       )}
+      <Modal open={Boolean(registroAEliminar)} onClose={cerrarEliminacion} title="Eliminar registro">
+        {registroAEliminar && (
+          <div className="doc-delete">
+            <p>¿Quieres eliminar este registro del historial?</p>
+            <strong className="doc-delete__name">{nombreDeArchivo(registroAEliminar)}</strong>
+            <span className="doc-delete__id">Registro {registroAEliminar.id}</span>
+            <p className="doc-delete__note">El registro dejará de aparecer en el historial. No podrás deshacer esta operación desde aquí.</p>
+            {errorEliminacion && <p className="doc-delete__error" role="alert">{errorEliminacion}</p>}
+            <div className="doc-delete__actions">
+              <button type="button" onClick={cerrarEliminacion} disabled={eliminando} autoFocus>Cancelar</button>
+              <button type="button" className="doc-delete__confirm" onClick={confirmarEliminacion} disabled={eliminando}>
+                {eliminando ? 'Eliminando…' : 'Eliminar registro'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

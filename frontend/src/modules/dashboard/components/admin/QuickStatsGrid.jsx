@@ -76,7 +76,7 @@ function QuickStatsGrid({ metricas, cargando }) {
         <DashboardStatCard
           to="/documents"
           icono={DocumentsIcon}
-          etiqueta="Documentos clínicos"
+          etiqueta="Registros de triaje"
           valor={metricas?.documentosTotal}
           detalle={metricas?.documentosHoy === null || metricas?.documentosHoy === undefined
             ? 'Registros de triaje'
@@ -85,28 +85,24 @@ function QuickStatsGrid({ metricas, cargando }) {
           cargando={cargando}
         />
         <DashboardStatCard
-          to="/agent"
+          to="/reviews"
           icono={AgentIcon}
-          etiqueta="Triaje asignado"
+          etiqueta="Registros asignados"
           valor={metricas?.triaje?.asignados ?? null}
           detalle={
             metricas?.triaje
-              ? `${metricas.triaje.sin_asignar} sin asignar`
-              : 'Métricas de triaje'
+              ? 'Histórico: incluye eliminados'
+              : 'Sin información'
           }
           tono="teal"
           cargando={cargando}
         />
         <DashboardStatCard
-          to="/agent"
+          to="/storage"
           icono={AgentIcon}
-          etiqueta="En auditoría"
-          valor={metricas?.triaje?.por_bucket?.auditoria ?? metricas?.enRevision ?? null}
-          detalle={
-            metricas?.triaje?.comentados != null
-              ? `${metricas.triaje.comentados} con comentarios`
-              : 'Documentos pendientes de revisión'
-          }
+          etiqueta="Objetos en bucket de auditoría"
+          valor={metricas?.enRevision ?? null}
+          detalle={metricas?.enRevisionTruncado ? 'Al menos 500 objetos listados' : 'Objetos almacenados en OCI'}
           tono="amber"
           cargando={cargando}
         />
